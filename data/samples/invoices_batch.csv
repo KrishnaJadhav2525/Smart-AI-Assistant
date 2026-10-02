@@ -1,0 +1,4 @@
+invoiceId,vendor,amount,currency,category,taxId,notes
+INV-2026-CSV-1,Supabase Database Inc,199.00,USD,Cloud Infrastructure,,Managed PostgreSQL database cluster
+INV-2026-CSV-2,OpenAI API Platform,850.00,USD,Software Subscriptions,US-EIN-9812401,Model inference tokens for extraction service
+INV-2026-CSV-3,Vercel Edge Network,150.00,USD,Cloud Infrastructure,,Edge deployment and static asset distribution

@@ -1,0 +1,26 @@
+[
+  {
+    "invoiceId": "INV-2026-001",
+    "vendor": "CloudScale AWS Corp",
+    "amount": 420.00,
+    "currency": "USD",
+    "category": "Cloud Infrastructure",
+    "notes": "Monthly RDS PostgreSQL database & S3 storage cluster"
+  },
+  {
+    "invoiceId": "INV-2026-002",
+    "vendor": "GitHub Enterprise Services",
+    "amount": 210.00,
+    "currency": "USD",
+    "category": "Software Subscriptions",
+    "notes": "Developer organization seat licenses and CI action runners"
+  },
+  {
+    "invoiceId": "INV-2026-003",
+    "vendor": "Sentry Error Monitoring",
+    "amount": 89.00,
+    "currency": "USD",
+    "category": "Software Subscriptions",
+    "notes": "Application performance monitoring and telemetry quota"
+  }
+]
