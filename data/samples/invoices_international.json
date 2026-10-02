@@ -1,0 +1,29 @@
+[
+  {
+    "invoiceId": "INV-2026-INTL-1",
+    "vendor": "Berlin AI Research Labs GmbH",
+    "amount": 1250.00,
+    "currency": "EUR",
+    "category": "Engineering Consulting",
+    "taxId": "DE-VAT-9921481",
+    "notes": "Domain-specific LLM fine-tuning and evaluation benchmark report"
+  },
+  {
+    "invoiceId": "INV-2026-INTL-2",
+    "vendor": "London Data Systems Ltd",
+    "amount": 890.00,
+    "currency": "GBP",
+    "category": "Cloud Infrastructure",
+    "taxId": "GB-84192033",
+    "notes": "Low-latency streaming event broker and Kafka infrastructure"
+  },
+  {
+    "invoiceId": "INV-2026-INTL-3",
+    "vendor": "Tokyo Quantum Compute Inc",
+    "amount": 450.00,
+    "currency": "USD",
+    "category": "Software Subscriptions",
+    "taxId": "JP-99210-TX",
+    "notes": "Algorithmic optimization simulation solver licenses"
+  }
+]
