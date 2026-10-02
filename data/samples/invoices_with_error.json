@@ -1,0 +1,17 @@
+{
+  "testDescription": "Failure Recovery Test Scenario: An invoice with high value (> $500) missing a Tax ID, requiring error detection and recovery with fallback data.",
+  "faultyInvoice": {
+    "invoiceId": "INV-2026-RECOV-01",
+    "vendor": "HighCompute Neural Cloud",
+    "amount": 1850.00,
+    "currency": "USD",
+    "category": "Cloud Infrastructure",
+    "taxId": "",
+    "notes": "H100 GPU cluster reservation for model pre-training"
+  },
+  "correctionData": {
+    "invoiceId": "INV-2026-RECOV-01",
+    "taxId": "US-EIN-88492019",
+    "justification": "Retrieved from verified corporate tax compliance database"
+  }
+}
