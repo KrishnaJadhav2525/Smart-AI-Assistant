@@ -1,0 +1,35 @@
+# Dependencies
+node_modules/
+
+# Production Build Output
+dist/
+
+# Environment Variables & Secrets
+.env
+.env.local
+.env.*.local
+
+# Browser Sessions & Local Storage Data
+.sessions/
+screenshots/
+*.log
+
+# Runtime Data & Logs
+data/chats/
+data/outputs/
+data/test_organize_sandbox/
+
+# Testing & Coverage
+coverage/
+
+# IDE & Editor Directories
+.vscode/
+.idea/
+.zcode/
+.aider-desk/
+.agents/
+
+# System Files
+.DS_Store
+Thumbs.db
+*.tmp
