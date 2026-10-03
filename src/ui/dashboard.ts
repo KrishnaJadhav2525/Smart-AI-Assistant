@@ -573,61 +573,221 @@ export function getDashboardHtml(): string {
     </div>
   </div>
 
-  <!-- User Preferences & Settings Modal -->
-  <div id="settingsModal" class="hidden fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">
-    <div class="max-w-lg w-full bg-light-bg dark:bg-gpt-card border border-light-border dark:border-gpt-border rounded-3xl p-6 shadow-2xl space-y-5">
-      <div class="flex items-center justify-between pb-3 border-b border-light-border dark:border-gpt-border">
-        <div class="flex items-center gap-3">
-          <div id="modalUserAvatar" class="w-9 h-9 rounded-xl bg-gradient-to-tr from-indigo-500 to-purple-500 text-white font-bold text-sm flex items-center justify-center shadow-sm">K</div>
-          <div>
-            <h3 class="font-bold text-sm text-light-text dark:text-gpt-text">User Profile & Settings</h3>
-            <div id="modalUserSubtitle" class="text-xs text-light-muted dark:text-gpt-muted">Manage your user profile & preferred AI model.</div>
+  <!-- Model settings & Provider Configuration Modal (Matching Reference Design) -->
+  <div id="settingsModal" class="hidden fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-2 sm:p-4 md:p-6">
+    <div class="w-full max-w-5xl h-[85vh] max-h-[750px] bg-light-bg dark:bg-[#111113] border border-light-border dark:border-white/10 rounded-2xl shadow-2xl flex overflow-hidden text-xs">
+      
+      <!-- LEFT SIDEBAR -->
+      <aside class="w-60 sm:w-64 border-r border-light-border dark:border-white/10 bg-light-card/60 dark:bg-[#161618] flex flex-col justify-between p-3 select-none flex-shrink-0">
+        <div class="space-y-4 overflow-y-auto">
+          <!-- Back to workspace -->
+          <button type="button" onclick="window.closeSettingsModal()" class="flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-light-muted dark:text-zinc-400 hover:text-light-text dark:hover:text-white hover:bg-light-card dark:hover:bg-zinc-800 transition-colors cursor-pointer font-medium w-full text-left">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>
+            <span>Back to workspace</span>
+          </button>
+
+          <!-- Basics section -->
+          <div class="space-y-1">
+            <div class="px-2.5 py-1 text-[10px] font-semibold text-light-muted dark:text-zinc-500 uppercase tracking-wider">Basics</div>
+            <button type="button" onclick="window.switchSettingsTab('general')" id="tabBtn_general" class="settings-nav-item w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-light-muted dark:text-zinc-400 hover:text-light-text dark:hover:text-white hover:bg-light-card dark:hover:bg-zinc-800 cursor-pointer">
+              <span>👤</span><span>General</span>
+            </button>
+            <button type="button" onclick="window.switchSettingsTab('appearance')" id="tabBtn_appearance" class="settings-nav-item w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-light-muted dark:text-zinc-400 hover:text-light-text dark:hover:text-white hover:bg-light-card dark:hover:bg-zinc-800 cursor-pointer">
+              <span>🎨</span><span>Appearance</span>
+            </button>
+            <button type="button" onclick="window.switchSettingsTab('models')" id="tabBtn_models" class="settings-nav-item active w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-light-card dark:bg-zinc-800 text-light-text dark:text-white font-semibold cursor-pointer">
+              <span>📦</span><span>Model settings</span>
+            </button>
+            <button type="button" onclick="window.switchSettingsTab('browser_use')" id="tabBtn_browser_use" class="settings-nav-item w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-light-muted dark:text-zinc-400 hover:text-light-text dark:hover:text-white hover:bg-light-card dark:hover:bg-zinc-800 cursor-pointer">
+              <span>🌐</span><span>Browser Use</span>
+            </button>
+            <button type="button" onclick="window.switchSettingsTab('computer_use')" id="tabBtn_computer_use" class="settings-nav-item w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-light-muted dark:text-zinc-400 hover:text-light-text dark:hover:text-white hover:bg-light-card dark:hover:bg-zinc-800 cursor-pointer">
+              <span>💻</span><span>Computer Use</span>
+            </button>
+          </div>
+
+          <!-- Providers section -->
+          <div class="space-y-1">
+            <div class="px-2.5 py-1 text-[10px] font-semibold text-light-muted dark:text-zinc-500 uppercase tracking-wider">Providers</div>
+            <button type="button" onclick="window.selectProvider('zai')" id="providerTab_zai" class="provider-nav-item w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-light-muted dark:text-zinc-400 hover:text-light-text dark:hover:text-white hover:bg-light-card dark:hover:bg-zinc-800 cursor-pointer">
+              <div class="flex items-center gap-2">
+                <span class="w-4 h-4 rounded bg-zinc-700 text-[10px] flex items-center justify-center font-bold text-white">Z</span>
+                <span>Z.ai</span>
+              </div>
+              <span class="w-2 h-2 rounded-full bg-zinc-600"></span>
+            </button>
+          </div>
+
+          <!-- Custom providers section -->
+          <div class="space-y-1">
+            <div class="px-2.5 py-1 text-[10px] font-semibold text-light-muted dark:text-zinc-500 uppercase tracking-wider">Custom providers</div>
+            <div id="customProvidersNavList" class="space-y-0.5">
+              <!-- Dynamically rendered OpenRouter, Gemini, etc. -->
+            </div>
+            <button type="button" onclick="window.promptAddProvider()" class="w-full flex items-center gap-1.5 px-2.5 py-1.5 text-[11px] text-light-muted dark:text-zinc-400 hover:text-emerald-500 dark:hover:text-emerald-400 transition-colors cursor-pointer">
+              <span>+ Add provider</span>
+            </button>
           </div>
         </div>
-        <button type="button" onclick="window.closeSettingsModal()" class="text-light-muted dark:text-gpt-muted hover:text-light-text dark:hover:text-gpt-text cursor-pointer text-lg">✕</button>
-      </div>
 
-      <div class="space-y-3.5 text-xs">
-        <div class="grid grid-cols-2 gap-3">
-          <div>
-            <label class="block font-semibold mb-1 text-light-text dark:text-gpt-text">User Name</label>
-            <input type="text" id="prefUsername" class="w-full px-3 py-2 rounded-xl bg-light-card dark:bg-gpt-darker border border-light-border dark:border-gpt-border text-light-text dark:text-gpt-text">
+        <!-- Sidebar bottom user badge -->
+        <div class="pt-3 border-t border-light-border dark:border-white/10 flex items-center justify-between">
+          <div class="flex items-center gap-2 truncate">
+            <div id="modalUserAvatar" class="w-7 h-7 rounded-lg bg-gradient-to-tr from-indigo-500 to-purple-500 text-white font-bold text-xs flex items-center justify-center shadow-sm">K</div>
+            <div class="truncate">
+              <div id="modalUserBottomName" class="font-semibold truncate text-[11px] text-light-text dark:text-white">Krishna Jadhav</div>
+              <div id="modalUserBottomEmail" class="text-[10px] text-light-muted dark:text-zinc-500 truncate">krishna@example.com</div>
+            </div>
           </div>
-          <div>
-            <label class="block font-semibold mb-1 text-light-text dark:text-gpt-text">Email Address</label>
-            <input type="email" id="prefEmail" class="w-full px-3 py-2 rounded-xl bg-light-card dark:bg-gpt-darker border border-light-border dark:border-gpt-border text-light-text dark:text-gpt-text">
+          <button type="button" onclick="window.logoutUser()" title="Sign out" class="text-zinc-500 hover:text-rose-400 p-1 cursor-pointer">🚪</button>
+        </div>
+      </aside>
+
+      <!-- RIGHT MAIN AREA -->
+      <section class="flex-1 flex flex-col bg-light-bg dark:bg-[#111113] overflow-y-auto min-w-0">
+        
+        <!-- Tab: Model Settings (Primary) -->
+        <div id="settingsView_models" class="p-6 space-y-5">
+          <div class="flex items-start justify-between">
+            <div>
+              <h2 class="text-xl font-bold tracking-tight text-light-text dark:text-white">Model settings</h2>
+              <p class="text-xs text-light-muted dark:text-zinc-400 mt-1">Manage custom model providers. Once configured, they can be selected during chat.</p>
+            </div>
+            <button type="button" onclick="window.renderModelSettingsView()" class="p-1.5 rounded-lg border border-light-border dark:border-zinc-800 text-light-muted dark:text-zinc-400 hover:text-white hover:bg-light-card dark:hover:bg-zinc-800 transition-colors cursor-pointer" title="Refresh settings">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+            </button>
+          </div>
+
+          <!-- Provider Detail Card -->
+          <div class="rounded-2xl border border-light-border dark:border-white/10 bg-light-card/40 dark:bg-[#18181b]/50 p-5 space-y-4">
+            
+            <!-- Provider Title Bar -->
+            <div class="flex items-center justify-between pb-3 border-b border-light-border/60 dark:border-white/10">
+              <div class="flex items-center gap-2">
+                <span id="curProviderTitle" class="text-base font-bold text-light-text dark:text-white">Gemini</span>
+                <button type="button" onclick="window.editProviderName()" class="text-light-muted dark:text-zinc-400 hover:text-white cursor-pointer" title="Edit provider name">✏️</button>
+                <div class="flex items-center gap-1 ml-2">
+                  <button type="button" id="curProviderEnabledBtn" onclick="window.toggleProviderStatus(true)" class="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 cursor-pointer">Enabled</button>
+                  <button type="button" id="curProviderDisableBtn" onclick="window.toggleProviderStatus(false)" class="px-2.5 py-0.5 rounded-full text-[11px] font-semibold text-zinc-500 hover:text-zinc-300 border border-transparent cursor-pointer">Disable</button>
+                </div>
+              </div>
+              <button type="button" onclick="window.deleteCurrentProvider()" id="deleteProviderBtn" class="text-zinc-500 hover:text-rose-400 cursor-pointer p-1" title="Delete custom provider">🗑️</button>
+            </div>
+
+            <!-- Provider Parameters -->
+            <div class="space-y-3.5">
+              <!-- Base URL -->
+              <div class="space-y-1">
+                <label class="block font-semibold text-light-muted dark:text-zinc-400">Base URL</label>
+                <input type="text" id="curProviderBaseUrl" onchange="window.saveProviderField('baseUrl', this.value)" class="w-full px-3.5 py-2 rounded-xl bg-light-card dark:bg-[#202024] border border-light-border dark:border-white/10 text-light-text dark:text-white font-mono text-xs focus:outline-none focus:border-emerald-500/60" placeholder="https://generativelanguage.googleapis.com/v1beta/openai">
+              </div>
+
+              <!-- API Format -->
+              <div class="space-y-1">
+                <label class="block font-semibold text-light-muted dark:text-zinc-400">API format</label>
+                <select id="curProviderApiFormat" onchange="window.saveProviderField('apiFormat', this.value)" class="w-full px-3.5 py-2 rounded-xl bg-light-card dark:bg-[#202024] border border-light-border dark:border-white/10 text-light-text dark:text-white text-xs focus:outline-none focus:border-emerald-500/60">
+                  <option value="openai">OpenAI compatible (/v1/chat/completions)</option>
+                  <option value="anthropic">Anthropic messages (/v1/messages)</option>
+                  <option value="gemini">Google Gemini Native</option>
+                </select>
+              </div>
+
+              <!-- API Key -->
+              <div class="space-y-1">
+                <label class="block font-semibold text-light-muted dark:text-zinc-400">API key</label>
+                <div class="relative">
+                  <input type="password" id="curProviderApiKey" onchange="window.saveProviderField('apiKey', this.value)" placeholder="Enter API key..." class="w-full px-3.5 py-2 pr-10 rounded-xl bg-light-card dark:bg-[#202024] border border-light-border dark:border-white/10 text-light-text dark:text-white font-mono text-xs focus:outline-none focus:border-emerald-500/60">
+                  <button type="button" onclick="window.toggleApiKeyVisibility()" class="absolute right-3 top-2 text-light-muted dark:text-zinc-400 hover:text-white cursor-pointer" title="Toggle visibility">👁️</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Model List Section -->
+            <div class="space-y-2.5 pt-2">
+              <div class="font-semibold text-light-text dark:text-white text-xs flex items-center justify-between">
+                <span>Model list</span>
+                <span class="text-[11px] text-light-muted dark:text-zinc-400 font-normal">Click 🔗 to select as active model</span>
+              </div>
+
+              <!-- Model Cards Container -->
+              <div id="curProviderModelList" class="space-y-1.5">
+                <!-- Dynamically rendered model cards -->
+              </div>
+
+              <!-- Add Model Button & Inline Form -->
+              <div id="addModelInlineArea" class="pt-1">
+                <button type="button" id="showAddModelBtn" onclick="window.toggleAddModelForm(true)" class="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-dashed border-light-border dark:border-white/15 hover:border-emerald-500/50 text-light-muted dark:text-zinc-400 hover:text-emerald-400 transition-colors w-full justify-center font-medium cursor-pointer">
+                  <span>+ Add model</span>
+                </button>
+
+                <!-- Hidden Inline Form -->
+                <div id="addModelForm" class="hidden p-3 rounded-xl border border-light-border dark:border-white/15 bg-light-card dark:bg-[#202024] space-y-2.5">
+                  <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <input type="text" id="newModelIdInput" placeholder="Model ID (e.g. gemini-3.8-flash-tiered[1m])" class="w-full px-3 py-1.5 rounded-lg bg-light-bg dark:bg-[#161618] border border-light-border dark:border-white/10 text-light-text dark:text-white font-mono text-xs focus:outline-none">
+                    <input type="text" id="newModelTagsInput" placeholder="Tags (e.g. Vision, 1M)" class="w-full px-3 py-1.5 rounded-lg bg-light-bg dark:bg-[#161618] border border-light-border dark:border-white/10 text-light-text dark:text-white text-xs focus:outline-none">
+                  </div>
+                  <div class="flex justify-end gap-2">
+                    <button type="button" onclick="window.toggleAddModelForm(false)" class="px-3 py-1 rounded-lg text-light-muted dark:text-zinc-400 hover:text-white cursor-pointer">Cancel</button>
+                    <button type="button" onclick="window.submitAddNewModel()" class="px-3.5 py-1 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-white font-semibold cursor-pointer">Save &amp; Activate Model</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
           </div>
         </div>
 
-        <div>
-          <label class="block font-semibold mb-1 text-light-text dark:text-gpt-text">Preferred Reasoning Model</label>
-          <select id="prefModel" class="w-full px-3 py-2 rounded-xl bg-light-card dark:bg-gpt-darker border border-light-border dark:border-gpt-border text-light-text dark:text-gpt-text">
-            <option value="deepseek/deepseek-v4-flash-0731:free">DeepSeek V4 Flash (Free - Fast)</option>
-            <option value="qwen/qwen3.8-27b:free">Qwen 3.8 27B (Free - Resilient)</option>
-            <option value="google/gemma-4-26b-a4b-it:free">Google Gemma 4 26B (Free)</option>
-            <option value="nex-agi/nex-n2.5-mini:free">Nex AGI N2.5 Mini (Free)</option>
-            <option value="google/gemini-2.5-flash">Google Gemini 2.5 Flash</option>
-            <option value="anthropic/claude-3-haiku">Claude 3 Haiku</option>
-            <option value="openai/gpt-4o-mini">OpenAI GPT-4o Mini</option>
-            <option value="anthropic/claude-sonnet-4">Anthropic Claude Sonnet 4</option>
-          </select>
+        <!-- Tab: General (User Profile) -->
+        <div id="settingsView_general" class="hidden p-6 space-y-5">
+          <h2 class="text-xl font-bold tracking-tight text-light-text dark:text-white">General settings</h2>
+          <p class="text-xs text-light-muted dark:text-zinc-400">Manage your user profile details.</p>
+          <div class="max-w-md space-y-3.5 p-5 rounded-2xl border border-light-border dark:border-white/10 bg-light-card/40 dark:bg-[#18181b]/50">
+            <div class="space-y-1">
+              <label class="block font-semibold text-light-muted dark:text-zinc-400">User Name</label>
+              <input type="text" id="prefUsername" class="w-full px-3.5 py-2 rounded-xl bg-light-card dark:bg-[#202024] border border-light-border dark:border-white/10 text-light-text dark:text-white text-xs">
+            </div>
+            <div class="space-y-1">
+              <label class="block font-semibold text-light-muted dark:text-zinc-400">Email Address</label>
+              <input type="email" id="prefEmail" class="w-full px-3.5 py-2 rounded-xl bg-light-card dark:bg-[#202024] border border-light-border dark:border-white/10 text-light-text dark:text-white text-xs">
+            </div>
+            <button type="button" onclick="window.saveGeneralProfile()" class="px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-white font-semibold cursor-pointer">Save Profile</button>
+          </div>
         </div>
 
-        <div>
-          <label class="block font-semibold mb-1 text-light-text dark:text-gpt-text">Custom OpenRouter API Key (Optional Override)</label>
-          <input type="password" id="prefApiKey" placeholder="sk-or-v1-... (leave blank to use server .env)" class="w-full px-3 py-2 rounded-xl bg-light-card dark:bg-gpt-darker border border-light-border dark:border-gpt-border text-light-text dark:text-gpt-text font-mono text-[11px]">
+        <!-- Tab: Appearance -->
+        <div id="settingsView_appearance" class="hidden p-6 space-y-5">
+          <h2 class="text-xl font-bold tracking-tight text-light-text dark:text-white">Appearance</h2>
+          <p class="text-xs text-light-muted dark:text-zinc-400">Customize assistant theme and visual interface.</p>
+          <div class="max-w-md space-y-3 p-5 rounded-2xl border border-light-border dark:border-white/10 bg-light-card/40 dark:bg-[#18181b]/50">
+            <div class="flex items-center justify-between">
+              <span class="text-light-text dark:text-white font-medium">Dark Mode Theme</span>
+              <button type="button" onclick="window.toggleTheme()" class="px-3.5 py-1.5 rounded-xl bg-emerald-500 text-white font-semibold cursor-pointer">Toggle Theme</button>
+            </div>
+          </div>
         </div>
-      </div>
 
-      <div class="flex items-center justify-between pt-3 border-t border-light-border dark:border-gpt-border">
-        <button type="button" onclick="window.logoutUser()" class="px-3.5 py-2 rounded-xl font-medium text-xs text-rose-500 hover:bg-rose-500/10 border border-rose-500/25 cursor-pointer">
-          🚪 Switch User / Sign Out
-        </button>
-        <div class="flex gap-2">
-          <button type="button" onclick="window.closeSettingsModal()" class="px-3.5 py-2 rounded-xl font-medium text-xs text-light-muted dark:text-gpt-muted hover:bg-light-card dark:hover:bg-gpt-card cursor-pointer">Cancel</button>
-          <button type="button" onclick="window.savePreferences()" class="px-4 py-2 rounded-xl font-semibold text-xs bg-emerald-500 hover:bg-emerald-400 text-white shadow-md cursor-pointer">Save Preferences</button>
+        <!-- Tab: Browser Use -->
+        <div id="settingsView_browser_use" class="hidden p-6 space-y-5">
+          <h2 class="text-xl font-bold tracking-tight text-light-text dark:text-white">Browser Use</h2>
+          <p class="text-xs text-light-muted dark:text-zinc-400">Configure Playwright browser automation execution parameters.</p>
+          <div class="max-w-md space-y-3 p-5 rounded-2xl border border-light-border dark:border-white/10 bg-light-card/40 dark:bg-[#18181b]/50">
+            <div class="text-light-muted dark:text-zinc-400">Viewport: 1280 × 800, Headless Playwright Chromium</div>
+            <div class="text-emerald-500 font-semibold">✓ Accessibility Snapshot Perception Engine Active</div>
+          </div>
         </div>
-      </div>
+
+        <!-- Tab: Computer Use -->
+        <div id="settingsView_computer_use" class="hidden p-6 space-y-5">
+          <h2 class="text-xl font-bold tracking-tight text-light-text dark:text-white">Computer Use</h2>
+          <p class="text-xs text-light-muted dark:text-zinc-400">Configure native desktop and local file tools.</p>
+          <div class="max-w-md space-y-3 p-5 rounded-2xl border border-light-border dark:border-white/10 bg-light-card/40 dark:bg-[#18181b]/50">
+            <div class="text-emerald-500 font-semibold">✓ Content-Aware Smart Organizer Enabled</div>
+            <div class="text-emerald-500 font-semibold">✓ Semantic Folder Renaming Active</div>
+            <div class="text-emerald-500 font-semibold">✓ Transactional Undo Reversibility Ready</div>
+          </div>
+        </div>
+
+      </section>
     </div>
   </div>
 
@@ -772,21 +932,110 @@ export function getDashboardHtml(): string {
       window.showToast('Welcome, ' + username + '!');
     };
 
-    window.openSettingsModal = function() {
+    // Model Settings & Custom Providers Management (Matching Design Reference)
+    var DEFAULT_PROVIDERS = [
+      {
+        id: 'gemini',
+        name: 'Gemini',
+        enabled: true,
+        baseUrl: 'https://generativelanguage.googleapis.com/v1beta/openai',
+        apiFormat: 'openai',
+        apiKey: '',
+        models: [
+          { id: 'gemini-3.7-flash-tiered[1m]', tags: ['Vision', '1M'] },
+          { id: 'gemini-3.1-pro-high[1m]', tags: ['Vision', '1M'] },
+          { id: 'claude-sonnet-4-6', tags: ['1M'] },
+          { id: 'gemini-3.8-flash-tiered[1m]', tags: ['Vision', '1M'] }
+        ]
+      },
+      {
+        id: 'openrouter',
+        name: 'OpenRouter',
+        enabled: true,
+        baseUrl: 'https://openrouter.ai/api/v1',
+        apiFormat: 'openai',
+        apiKey: '',
+        models: [
+          { id: 'deepseek/deepseek-v4-flash-0731:free', tags: ['Free', 'Fast'] },
+          { id: 'qwen/qwen3.8-27b:free', tags: ['Free', 'Resilient'] },
+          { id: 'google/gemma-4-26b-a4b-it:free', tags: ['Free'] },
+          { id: 'nex-agi/nex-n2.5-mini:free', tags: ['Free'] },
+          { id: 'google/gemini-2.5-flash', tags: ['Vision'] },
+          { id: 'anthropic/claude-3-haiku', tags: ['Fast'] },
+          { id: 'openai/gpt-4o-mini', tags: ['Vision'] },
+          { id: 'anthropic/claude-sonnet-4', tags: ['1M'] }
+        ]
+      },
+      {
+        id: 'zai',
+        name: 'Z.ai',
+        enabled: false,
+        baseUrl: 'http://localhost:8080',
+        apiFormat: 'anthropic',
+        apiKey: '',
+        models: [
+          { id: 'z-agent-3.5', tags: ['Local'] }
+        ]
+      }
+    ];
+
+    window.currentSelectedProviderId = 'gemini';
+
+    window.getSavedProviders = function() {
+      try {
+        var raw = localStorage.getItem('browser_agent_custom_providers');
+        if (raw) {
+          var parsed = JSON.parse(raw);
+          if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        }
+      } catch (e) {}
+      localStorage.setItem('browser_agent_custom_providers', JSON.stringify(DEFAULT_PROVIDERS));
+      return DEFAULT_PROVIDERS;
+    };
+
+    window.saveProviders = function(providers) {
+      localStorage.setItem('browser_agent_custom_providers', JSON.stringify(providers));
+    };
+
+    window.selectProvider = function(providerId) {
+      window.currentSelectedProviderId = providerId;
+      window.renderModelSettingsView();
+    };
+
+    window.switchSettingsTab = function(tabName) {
+      var tabs = ['general', 'appearance', 'models', 'browser_use', 'computer_use'];
+      tabs.forEach(function(t) {
+        var btn = document.getElementById('tabBtn_' + t);
+        var view = document.getElementById('settingsView_' + t);
+        if (btn) {
+          if (t === tabName) {
+            btn.className = 'settings-nav-item active w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-light-card dark:bg-zinc-800 text-light-text dark:text-white font-semibold cursor-pointer';
+          } else {
+            btn.className = 'settings-nav-item w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-light-muted dark:text-zinc-400 hover:text-light-text dark:hover:text-white hover:bg-light-card dark:hover:bg-zinc-800 cursor-pointer';
+          }
+        }
+        if (view) {
+          if (t === tabName) view.classList.remove('hidden');
+          else view.classList.add('hidden');
+        }
+      });
+    };
+
+    window.openSettingsModal = function(tab) {
       var modal = document.getElementById('settingsModal');
       var user = window.getSavedUser() || { username: 'Krishna', email: 'krishna@example.com' };
-      var prefs = window.getSavedPreferences();
-
+      var uBottom = document.getElementById('modalUserBottomName');
+      var eBottom = document.getElementById('modalUserBottomEmail');
       var uInput = document.getElementById('prefUsername');
       var eInput = document.getElementById('prefEmail');
-      var mSelect = document.getElementById('prefModel');
-      var kInput = document.getElementById('prefApiKey');
 
-      if (uInput) uInput.value = user.username || '';
-      if (eInput) eInput.value = user.email || '';
-      if (mSelect) mSelect.value = prefs.model || 'deepseek/deepseek-v4-flash-0731:free';
-      if (kInput) kInput.value = prefs.apiKey || '';
+      if (uBottom) uBottom.textContent = user.username || 'Krishna Jadhav';
+      if (eBottom) eBottom.textContent = user.email || 'krishna@example.com';
+      if (uInput) uInput.value = user.username || 'Krishna';
+      if (eInput) eInput.value = user.email || 'krishna@example.com';
 
+      window.switchSettingsTab(tab || 'models');
+      window.renderModelSettingsView();
       if (modal) modal.classList.remove('hidden');
     };
 
@@ -795,28 +1044,351 @@ export function getDashboardHtml(): string {
       if (modal) modal.classList.add('hidden');
     };
 
-    window.savePreferences = function() {
-      var uInput = document.getElementById('prefUsername');
-      var eInput = document.getElementById('prefEmail');
-      var mSelect = document.getElementById('prefModel');
-      var kInput = document.getElementById('prefApiKey');
+    window.renderModelSettingsView = function() {
+      var providers = window.getSavedProviders();
+      var curId = window.currentSelectedProviderId || 'gemini';
+      var curProv = providers.find(function(p) { return p.id === curId; }) || providers[0];
+      if (!curProv) return;
+      window.currentSelectedProviderId = curProv.id;
 
-      var username = (uInput && uInput.value.trim()) || 'Krishna';
-      var email = (eInput && eInput.value.trim()) || 'krishna@example.com';
-      var model = (mSelect && mSelect.value) || 'deepseek/deepseek-v4-flash-0731:free';
-      var apiKey = (kInput && kInput.value.trim()) || '';
+      // 1. Render custom providers list on sidebar
+      var customList = document.getElementById('customProvidersNavList');
+      if (customList) {
+        customList.innerHTML = '';
+        providers.filter(function(p) { return p.id !== 'zai'; }).forEach(function(prov) {
+          var isCur = prov.id === curProv.id;
+          var btn = document.createElement('button');
+          btn.type = 'button';
+          btn.className = 'w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg transition-colors cursor-pointer ' +
+            (isCur ? 'bg-light-card dark:bg-zinc-800 text-light-text dark:text-white font-semibold' : 'text-light-muted dark:text-zinc-400 hover:text-white hover:bg-light-card dark:hover:bg-zinc-800');
+          btn.innerHTML =
+            '<div class="flex items-center gap-2">' +
+              '<span>' + (prov.id === 'openrouter' ? '📦' : prov.id === 'gemini' ? '💎' : '⚡') + '</span>' +
+              '<span>' + window.esc(prov.name) + '</span>' +
+            '</div>' +
+            '<span class="w-2 h-2 rounded-full ' + (prov.enabled ? 'bg-emerald-500' : 'bg-zinc-600') + '"></span>';
+          btn.onclick = function() {
+            window.selectProvider(prov.id);
+          };
+          customList.appendChild(btn);
+        });
+      }
 
-      var userObj = { username: username, email: email, updatedAt: new Date().toISOString() };
-      var prefObj = Object.assign(window.getSavedPreferences(), {
-        model: model,
-        apiKey: apiKey,
-        email: email
+      // 2. Render provider details
+      var titleEl = document.getElementById('curProviderTitle');
+      if (titleEl) titleEl.textContent = curProv.name;
+
+      var enabledBtn = document.getElementById('curProviderEnabledBtn');
+      var disableBtn = document.getElementById('curProviderDisableBtn');
+      if (enabledBtn && disableBtn) {
+        if (curProv.enabled) {
+          enabledBtn.className = 'px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 cursor-pointer';
+          disableBtn.className = 'px-2.5 py-0.5 rounded-full text-[11px] font-semibold text-zinc-500 hover:text-zinc-300 border border-transparent cursor-pointer';
+        } else {
+          enabledBtn.className = 'px-2.5 py-0.5 rounded-full text-[11px] font-semibold text-zinc-500 hover:text-zinc-300 border border-transparent cursor-pointer';
+          disableBtn.className = 'px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-zinc-700 text-zinc-300 border border-zinc-600 cursor-pointer';
+        }
+      }
+
+      var baseInput = document.getElementById('curProviderBaseUrl');
+      if (baseInput) baseInput.value = curProv.baseUrl || '';
+
+      var formatSelect = document.getElementById('curProviderApiFormat');
+      if (formatSelect) formatSelect.value = curProv.apiFormat || 'openai';
+
+      var keyInput = document.getElementById('curProviderApiKey');
+      if (keyInput) keyInput.value = curProv.apiKey || '';
+
+      // 3. Render model list cards
+      var modelListEl = document.getElementById('curProviderModelList');
+      if (modelListEl) {
+        modelListEl.innerHTML = '';
+        var activeModel = window.state.selectedModel;
+
+        (curProv.models || []).forEach(function(m) {
+          var isSelected = (m.id === activeModel);
+          var card = document.createElement('div');
+          card.className = 'flex items-center justify-between p-2.5 rounded-xl border transition-all ' +
+            (isSelected ? 'bg-emerald-500/10 border-emerald-500/40 text-emerald-600 dark:text-emerald-400 font-semibold' : 'bg-light-card/60 dark:bg-[#202024] border-light-border dark:border-white/10 text-light-text dark:text-zinc-200');
+
+          var tagsHtml = (m.tags || []).map(function(t) {
+            return '<span class="px-2 py-0.5 rounded text-[10px] bg-zinc-200 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 font-medium">' + window.esc(t) + '</span>';
+          }).join(' ');
+
+          card.innerHTML =
+            '<div class="flex items-center gap-2.5 truncate">' +
+              (isSelected ? '<span class="text-emerald-500 font-bold" title="Currently Active">✓</span>' : '') +
+              '<span class="font-mono text-xs font-semibold truncate">' + window.esc(m.id) + '</span>' +
+              '<div class="flex items-center gap-1 flex-shrink-0">' + tagsHtml + '</div>' +
+            '</div>' +
+            '<div class="flex items-center gap-1.5 flex-shrink-0 ml-2">' +
+              '<button type="button" class="select-model-btn p-1.5 rounded-lg hover:bg-emerald-500/20 text-zinc-400 hover:text-emerald-400 cursor-pointer" title="Activate this model">' +
+                '<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/></svg>' +
+              '</button>' +
+              '<button type="button" class="del-model-btn p-1.5 rounded-lg hover:bg-rose-500/20 text-zinc-400 hover:text-rose-400 cursor-pointer" title="Delete model">' +
+                '<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>' +
+              '</button>' +
+            '</div>';
+
+          var selectBtn = card.querySelector('.select-model-btn');
+          if (selectBtn) {
+            selectBtn.onclick = function() {
+              window.switchModel(m.id, m.name || m.id, curProv.id);
+            };
+          }
+
+          var delBtn = card.querySelector('.del-model-btn');
+          if (delBtn) {
+            delBtn.onclick = function(e) {
+              e.stopPropagation();
+              window.deleteModel(m.id);
+            };
+          }
+
+          modelListEl.appendChild(card);
+        });
+      }
+
+      window.populateTopModelPicker();
+    };
+
+    window.switchModel = function(modelId, modelName, providerId) {
+      window.state.selectedModel = modelId;
+      window.state.selectedModelName = modelName || modelId;
+
+      var cleanName = (modelName || modelId).split('/')[1]?.split(':')[0] || (modelName || modelId);
+      var curText = document.getElementById('currentModelText');
+      if (curText) curText.textContent = cleanName;
+
+      // Persist in preferences
+      var prefs = window.getSavedPreferences();
+      prefs.model = modelId;
+      localStorage.setItem('browser_agent_preferences', JSON.stringify(prefs));
+      localStorage.setItem('browser_agent_selected_model', modelId);
+
+      // Close dropdown if open
+      var drop = document.getElementById('modelDropdown');
+      if (drop) drop.classList.add('hidden');
+
+      // Update modal view if open
+      var modal = document.getElementById('settingsModal');
+      if (modal && !modal.classList.contains('hidden')) {
+        window.renderModelSettingsView();
+      }
+
+      window.showToast('✓ Switched model to ' + cleanName + ' (Active)');
+    };
+
+    window.toggleAddModelForm = function(show) {
+      var form = document.getElementById('addModelForm');
+      var btn = document.getElementById('showAddModelBtn');
+      if (form) form.classList.toggle('hidden', !show);
+      if (btn) btn.classList.toggle('hidden', show);
+      if (show) {
+        var input = document.getElementById('newModelIdInput');
+        if (input) input.focus();
+      }
+    };
+
+    window.submitAddNewModel = function() {
+      var idInput = document.getElementById('newModelIdInput');
+      var tagsInput = document.getElementById('newModelTagsInput');
+      if (!idInput || !idInput.value.trim()) {
+        window.showToast('Please enter a valid model ID.');
+        return;
+      }
+      var newId = idInput.value.trim();
+      var tags = (tagsInput && tagsInput.value.trim())
+        ? tagsInput.value.split(',').map(function(t) { return t.trim(); }).filter(Boolean)
+        : ['Custom'];
+
+      var providers = window.getSavedProviders();
+      var curId = window.currentSelectedProviderId || 'gemini';
+      var curProv = providers.find(function(p) { return p.id === curId; });
+      if (!curProv) return;
+
+      if (!curProv.models) curProv.models = [];
+      var existing = curProv.models.find(function(m) { return m.id === newId; });
+      if (existing) {
+        existing.tags = tags;
+      } else {
+        curProv.models.push({ id: newId, tags: tags });
+      }
+
+      window.saveProviders(providers);
+      window.toggleAddModelForm(false);
+      idInput.value = '';
+      if (tagsInput) tagsInput.value = '';
+
+      // Immediately switch to and activate newly added model
+      window.switchModel(newId, newId, curProv.id);
+      window.renderModelSettingsView();
+      window.showToast('✓ Added model ' + newId + ' to ' + curProv.name);
+    };
+
+    window.deleteModel = function(modelId) {
+      var providers = window.getSavedProviders();
+      var curId = window.currentSelectedProviderId || 'gemini';
+      var curProv = providers.find(function(p) { return p.id === curId; });
+      if (!curProv || !curProv.models) return;
+
+      curProv.models = curProv.models.filter(function(m) { return m.id !== modelId; });
+      window.saveProviders(providers);
+      window.renderModelSettingsView();
+      window.showToast('Removed model ' + modelId);
+    };
+
+    window.saveProviderField = function(field, val) {
+      var providers = window.getSavedProviders();
+      var curId = window.currentSelectedProviderId || 'gemini';
+      var curProv = providers.find(function(p) { return p.id === curId; });
+      if (!curProv) return;
+
+      curProv[field] = val;
+      window.saveProviders(providers);
+      window.showToast('Saved ' + field);
+    };
+
+    window.toggleProviderStatus = function(enabled) {
+      var providers = window.getSavedProviders();
+      var curId = window.currentSelectedProviderId || 'gemini';
+      var curProv = providers.find(function(p) { return p.id === curId; });
+      if (!curProv) return;
+
+      curProv.enabled = enabled;
+      window.saveProviders(providers);
+      window.renderModelSettingsView();
+      window.showToast(curProv.name + ' provider ' + (enabled ? 'Enabled' : 'Disabled'));
+    };
+
+    window.toggleApiKeyVisibility = function() {
+      var keyInput = document.getElementById('curProviderApiKey');
+      if (!keyInput) return;
+      keyInput.type = (keyInput.type === 'password') ? 'text' : 'password';
+    };
+
+    window.promptAddProvider = function() {
+      var name = prompt('Enter custom provider name:');
+      if (!name || !name.trim()) return;
+      var cleanName = name.trim();
+      var cleanId = cleanName.toLowerCase().replace(/[^a-z0-9_-]/g, '_');
+
+      var providers = window.getSavedProviders();
+      if (providers.some(function(p) { return p.id === cleanId; })) {
+        window.showToast('Provider already exists.');
+        return;
+      }
+
+      providers.push({
+        id: cleanId,
+        name: cleanName,
+        enabled: true,
+        baseUrl: 'http://localhost:8080',
+        apiFormat: 'openai',
+        apiKey: '',
+        models: []
       });
 
-      localStorage.setItem('browser_agent_user', JSON.stringify(userObj));
-      localStorage.setItem('browser_agent_preferences', JSON.stringify(prefObj));
+      window.saveProviders(providers);
+      window.selectProvider(cleanId);
+      window.showToast('Added custom provider: ' + cleanName);
+    };
 
+    window.deleteCurrentProvider = function() {
+      var curId = window.currentSelectedProviderId;
+      if (curId === 'openrouter' || curId === 'gemini' || curId === 'zai') {
+        window.showToast('Cannot delete preset provider.');
+        return;
+      }
+      if (!confirm('Are you sure you want to delete this provider?')) return;
+
+      var providers = window.getSavedProviders().filter(function(p) { return p.id !== curId; });
+      window.saveProviders(providers);
+      window.selectProvider('gemini');
+      window.showToast('Deleted provider.');
+    };
+
+    window.editProviderName = function() {
+      var providers = window.getSavedProviders();
+      var curId = window.currentSelectedProviderId;
+      var curProv = providers.find(function(p) { return p.id === curId; });
+      if (!curProv) return;
+
+      var newName = prompt('Edit provider name:', curProv.name);
+      if (newName && newName.trim()) {
+        curProv.name = newName.trim();
+        window.saveProviders(providers);
+        window.renderModelSettingsView();
+      }
+    };
+
+    window.saveGeneralProfile = function() {
+      var uInput = document.getElementById('prefUsername');
+      var eInput = document.getElementById('prefEmail');
+      var username = (uInput && uInput.value.trim()) || 'Krishna';
+      var email = (eInput && eInput.value.trim()) || 'krishna@example.com';
+
+      var userObj = { username: username, email: email, updatedAt: new Date().toISOString() };
+      localStorage.setItem('browser_agent_user', JSON.stringify(userObj));
       window.initAuthAndPreferences();
+      window.showToast('Profile updated!');
+    };
+
+    window.populateTopModelPicker = function() {
+      var container = document.getElementById('modelOptionsContainer');
+      if (!container) return;
+      container.innerHTML = '';
+
+      var providers = window.getSavedProviders();
+      var activeModel = window.state.selectedModel;
+
+      providers.filter(function(p) { return p.enabled; }).forEach(function(prov) {
+        var groupHeader = document.createElement('div');
+        groupHeader.className = 'px-2 pt-1.5 pb-0.5 text-[10px] font-bold text-light-muted dark:text-zinc-500 uppercase tracking-wider flex items-center justify-between';
+        groupHeader.innerHTML = '<span>' + window.esc(prov.name) + '</span><span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>';
+        container.appendChild(groupHeader);
+
+        (prov.models || []).forEach(function(m) {
+          var isCur = (m.id === activeModel);
+          var btn = document.createElement('button');
+          btn.type = 'button';
+          btn.className = 'model-option w-full flex items-center justify-between p-2 rounded-xl text-left hover:bg-light-card dark:hover:bg-zinc-800 transition-colors cursor-pointer ' +
+            (isCur ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-medium border border-emerald-500/30' : 'text-light-text dark:text-zinc-300');
+
+          var tags = (m.tags || []).map(function(t) {
+            return '<span class="px-1.5 py-0.2 rounded text-[9px] bg-zinc-200 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400">' + window.esc(t) + '</span>';
+          }).join(' ');
+
+          btn.innerHTML =
+            '<div class="truncate mr-2">' +
+              '<div class="font-semibold text-xs truncate">' + window.esc(m.id) + '</div>' +
+              '<div class="flex items-center gap-1 mt-0.5">' + tags + '</div>' +
+            '</div>' +
+            (isCur ? '<span class="text-emerald-500 font-bold text-xs flex-shrink-0">✓</span>' : '');
+
+          btn.onclick = function() {
+            window.switchModel(m.id, m.id, prov.id);
+          };
+          container.appendChild(btn);
+        });
+      });
+
+      // Bottom Manage Models link
+      var manageBtn = document.createElement('button');
+      manageBtn.type = 'button';
+      manageBtn.className = 'w-full mt-1.5 pt-2 border-t border-light-border dark:border-white/10 px-2 py-1.5 text-center text-xs font-semibold text-emerald-600 dark:text-emerald-400 hover:underline cursor-pointer flex items-center justify-center gap-1.5';
+      manageBtn.innerHTML = '<span>⚙️</span><span>Manage Models &amp; Providers</span>';
+      manageBtn.onclick = function(e) {
+        e.stopPropagation();
+        var drop = document.getElementById('modelDropdown');
+        if (drop) drop.classList.add('hidden');
+        window.openSettingsModal('models');
+      };
+      container.appendChild(manageBtn);
+    };
+
+    window.savePreferences = function() {
+      window.saveGeneralProfile();
       window.closeSettingsModal();
       window.showToast('Preferences saved successfully!');
     };
@@ -1562,41 +2134,7 @@ export function getDashboardHtml(): string {
     };
 
     window.loadModels = function() {
-      fetch('/api/models')
-        .then(function(res) { return res.json(); })
-        .then(function(data) {
-          if (!data || !data.models) return;
-          if (data.defaultModel) {
-            window.state.selectedModel = data.defaultModel;
-            var defM = data.models.find(function(m) { return m.id === data.defaultModel; });
-            if (defM) {
-              window.state.selectedModelName = defM.name;
-              var curLabel = document.getElementById('currentModelText');
-              if (curLabel) curLabel.textContent = defM.name;
-            }
-          }
-          var container = document.getElementById('modelOptionsContainer');
-          if (!container) return;
-          container.innerHTML = '';
-          data.models.forEach(function(m) {
-            var btn = document.createElement('button');
-            btn.type = 'button';
-            btn.className = 'model-option w-full flex items-center justify-between p-2 rounded-xl text-left hover:bg-light-card dark:hover:bg-gpt-cardHover cursor-pointer ' +
-              (m.id === window.state.selectedModel ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-medium' : '');
-            btn.innerHTML = '<div><div class="font-semibold text-xs">' + window.esc(m.name) + '</div><div class="text-[10px] opacity-60 font-mono">' + window.esc(m.id) + '</div></div>';
-            btn.onclick = function() {
-              window.state.selectedModel = m.id;
-              window.state.selectedModelName = m.name;
-              var cur = document.getElementById('currentModelText');
-              if (cur) cur.textContent = m.name;
-              var drop = document.getElementById('modelDropdown');
-              if (drop) drop.classList.add('hidden');
-              window.showToast('Switched model to ' + m.name);
-            };
-            container.appendChild(btn);
-          });
-        })
-        .catch(function() {});
+      window.populateTopModelPicker();
     };
 
     window.initSSE = function() {
@@ -1948,16 +2486,23 @@ export function getDashboardHtml(): string {
       promptInput.value = '';
       promptInput.style.height = 'auto';
 
+      var providers = window.getSavedProviders();
+      var activeModel = window.state.selectedModel || prefs.model;
+      var activeProvider = providers.find(function(p) {
+        return (p.models || []).some(function(m) { return m.id === activeModel; });
+      }) || providers[0];
+
       fetch('/api/run', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           goal: goal,
           url: url,
-          model: window.state.selectedModel || prefs.model,
+          model: activeModel,
           headless: prefs.headless !== undefined ? prefs.headless : true,
           slowMo: prefs.slowMo !== undefined ? parseInt(prefs.slowMo, 10) : 50,
-          apiKey: (prefs.apiKey && prefs.apiKey.trim()) ? prefs.apiKey.trim() : undefined
+          apiKey: (activeProvider && activeProvider.apiKey && activeProvider.apiKey.trim()) ? activeProvider.apiKey.trim() : ((prefs.apiKey && prefs.apiKey.trim()) ? prefs.apiKey.trim() : undefined),
+          baseUrl: activeProvider ? activeProvider.baseUrl : undefined
         })
       })
       .then(function(res) { return res.json(); })

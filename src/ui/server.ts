@@ -374,9 +374,11 @@ export function startDashboardServer(options: ServerOptions = {}): http.Server {
           activeBrowserManager = browserManager;
           startLiveCapture();
 
+          const baseUrl = params.baseUrl || process.env.OPENROUTER_BASE_URL;
           const openRouterClient = new OpenRouterClient({
             apiKey,
             model,
+            baseURL: baseUrl,
           });
 
           const agent = new AgentLoop(browserManager, openRouterClient, securityPolicy);
