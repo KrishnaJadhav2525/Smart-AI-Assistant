@@ -37,6 +37,7 @@ RULES:
 5. Use desktop_write_note ONLY when the user asks to save notes or summaries. Set openInNotepad: true ONLY if the user explicitly asked to open Notepad.
 6. When the goal is achieved or final information is extracted, call browser_done IMMEDIATELY.
 7. Provide a clear, detailed finalAnswer with full results.
+8. If the task CANNOT be completed because the page requires signing in (e.g. Google Sign-In, "Sign in to continue", "You need permission", CAPTCHA, or login wall), call browser_done immediately and state the EXACT roadblock reason in "finalAnswer" and "summary" (e.g. "Unable to fill Google Form because the form requires signing into a Google account, and the current browser session is unauthenticated."). NEVER say "Completed" or pretend it succeeded when blocked by authentication.
 
 Respond with a single JSON tool call. No prose before/after the JSON.`;
   }

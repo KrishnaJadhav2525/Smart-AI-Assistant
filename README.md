@@ -93,6 +93,42 @@ Zero cloud audio latency, 100% local privacy:
 - **Zero Consonant Clipping:** Pre-roll circular audio buffer (768ms) captures speech onset before speech threshold trigger.
 - **Persistent Python STT Daemon:** Node controller keeps a pre-warmed `faster-whisper` `small.en` worker in memory via stdin/stdout IPC, achieving near-instantaneous transcription without model cold starts.
 
+### 11. 🛡️ Roadblock & Authentication Diagnosis Engine
+When web automation tasks encounter sign-in gates (e.g. Google Forms requiring Google account login, "Sign in to continue", "You need permission", or CAPTCHA challenges), BrowserAgent automatically inspects the page state:
+- **Root-Cause Diagnosis:** Flags when tasks cannot proceed due to missing authentication credentials instead of falsely reporting success.
+- **Explicit Failure Attribution:** Explains the exact barrier encountered:
+  `❌ Task Blocked: Target page requires a signed-in Google account ('Sign in to continue'). The current browser session is unauthenticated, so form fields and permissions are inaccessible.`
+
+### 12. 🌐 Operating with Your Real Signed-In Browser (Google Forms, Gmail, etc.)
+By default, Playwright launches a fresh, unauthenticated browser session. To have the agent operate on websites where you are already signed in (like Google Forms, Gmail, or corporate portals), you can use either of the following approaches:
+
+#### Method A: Persistent Chrome Profile (Log In Once, Persist Forever)
+Set the environment variable in `.env`:
+```env
+USE_REAL_CHROME=true
+HEADLESS=false
+```
+1. BrowserAgent launches your real installed Google Chrome with a persistent user data directory (`.sessions/chrome-profile`).
+2. Log into your Google account or required website once.
+3. Your login session, cookies, and tokens stay saved permanently across all future agent tasks.
+
+#### Method B: Attach Directly to Your Running Chrome (Remote Debugging CDP)
+Control your everyday, already-open Chrome window with all active tabs and Google accounts intact:
+1. Start Google Chrome with remote debugging enabled:
+   - On Windows:
+     ```cmd
+     chrome.exe --remote-debugging-port=9222 --user-data-dir="C:\ChromeDebugProfile"
+     ```
+   - On macOS:
+     ```bash
+     /Applications/Google\ Chrome.app/Contents/MacOS/Google\ Chrome --remote-debugging-port=9222 --user-data-dir="/tmp/chrome-debug"
+     ```
+2. Set in `.env`:
+   ```env
+   CHROME_CDP_URL=http://localhost:9222
+   ```
+3. BrowserAgent connects directly to your active Chrome window via CDP (`chromium.connectOverCDP`), operating on your live tabs with all your logged-in accounts.
+
 ---
 
 ## 🏗 System Architecture Flow

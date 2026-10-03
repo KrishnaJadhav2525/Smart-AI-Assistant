@@ -375,14 +375,25 @@ export class AgentLoop {
 
         // Check if agent completed the mission
         if (toolName === 'browser_done') {
-          finalAnswer = args.finalAnswer || args.summary || executionResult.output;
-          taskSummary = args.summary || 'Task completed successfully.';
+          const roadblock = await this.detectRoadblock(page, options.goal);
+
+          let isSuccess = true;
+          if (roadblock) {
+            isSuccess = false;
+            finalAnswer = `❌ Task Blocked: ${roadblock}`;
+            taskSummary = roadblock;
+          } else {
+            finalAnswer = args.finalAnswer || args.summary || executionResult.output;
+            taskSummary = args.summary || 'Task completed successfully.';
+          }
 
           // Verified Completion Artifact Generation
-          const verification = await this.verifyAndGenerateArtifacts(page, options.goal, steps).catch(() => undefined);
+          const verification = isSuccess
+            ? await this.verifyAndGenerateArtifacts(page, options.goal, steps).catch(() => undefined)
+            : undefined;
 
           return {
-            success: true,
+            success: isSuccess,
             goal: options.goal,
             steps,
             finalAnswer,
@@ -415,14 +426,65 @@ export class AgentLoop {
       }
     }
 
+    const roadblock = await this.detectRoadblock(page, options.goal);
     return {
       success: false,
       goal: options.goal,
       steps,
-      error: `Agent reached maximum step limit (${maxSteps}) without calling browser_done.`,
+      error: roadblock || `Agent reached maximum step limit (${maxSteps}) without calling browser_done.`,
+      finalAnswer: roadblock ? `❌ Task Blocked: ${roadblock}` : undefined,
       totalTokens,
       durationMs: Date.now() - startTime,
     };
+  }
+
+  /**
+   * Detects authentication barriers, sign-in walls, or access denial on the current page.
+   */
+  public async detectRoadblock(page: Page, goal: string): Promise<string | null> {
+    try {
+      const url = page.url() || '';
+      const text = await page.evaluate(() => {
+        return (document.body ? document.body.innerText : '').slice(0, 4000);
+      }).catch(() => '');
+      const lower = text.toLowerCase();
+
+      // Check Google Form & Google Sign-In Wall
+      if (
+        url.includes('accounts.google.com') ||
+        lower.includes('sign in to continue') ||
+        lower.includes('sign in to google') ||
+        lower.includes('to fill out this form, you must be signed in') ||
+        lower.includes('you need permission') ||
+        lower.includes('this form can only be viewed by users in the owner\'s organization')
+      ) {
+        return `Target page requires a signed-in Google account. The current browser session is unauthenticated, so form fields and permissions are inaccessible. To resolve this, use your real signed-in Chrome browser via persistent profile (USE_REAL_CHROME=true) or remote debugging (chrome.exe --remote-debugging-port=9222).`;
+      }
+
+      // Generic authentication wall
+      if (
+        lower.includes('please log in to continue') ||
+        lower.includes('please sign in') ||
+        lower.includes('authentication required') ||
+        lower.includes('403 forbidden') ||
+        lower.includes('access denied')
+      ) {
+        return `Target page requires user authentication or login credentials. The current browser session is not logged in.`;
+      }
+
+      // Anti-bot & CAPTCHA wall
+      if (
+        lower.includes('verify you are human') ||
+        lower.includes('complete the security check') ||
+        (lower.includes('cloudflare') && lower.includes('checking your browser'))
+      ) {
+        return `Blocked by Cloudflare/CAPTCHA bot protection challenge on the target page.`;
+      }
+
+      return null;
+    } catch {
+      return null;
+    }
   }
 
   /**

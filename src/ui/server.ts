@@ -370,6 +370,9 @@ export function startDashboardServer(options: ServerOptions = {}): http.Server {
           const browserManager = new BrowserManager({
             headless,
             slowMo: customSlowMo,
+            useSystemChrome: params.useSystemChrome !== undefined ? params.useSystemChrome : (process.env.USE_REAL_CHROME === 'true'),
+            userDataDir: params.userDataDir || process.env.CHROME_USER_DATA_DIR,
+            cdpUrl: params.cdpUrl || process.env.CHROME_CDP_URL,
           });
           activeBrowserManager = browserManager;
           startLiveCapture();

@@ -10,6 +10,9 @@ export interface BrowserOptions {
   sessionDir?: string;
   screenshotDir?: string;
   userAgent?: string;
+  useSystemChrome?: boolean;
+  userDataDir?: string;
+  cdpUrl?: string;
 }
 
 export class BrowserManager {
@@ -29,6 +32,9 @@ export class BrowserManager {
       userAgent:
         options.userAgent ??
         'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+      useSystemChrome: options.useSystemChrome ?? (process.env.USE_REAL_CHROME === 'true'),
+      userDataDir: options.userDataDir || process.env.CHROME_USER_DATA_DIR,
+      cdpUrl: options.cdpUrl || process.env.CHROME_CDP_URL,
     };
 
     this.sessionDir = options.sessionDir ?? path.resolve(process.cwd(), '.sessions');
@@ -50,6 +56,64 @@ export class BrowserManager {
       return this.page;
     }
 
+    // 1. Connect to an already-open real Chrome browser via CDP (Remote Debugging)
+    const cdpEndpoint = this.options.cdpUrl || process.env.CHROME_CDP_URL;
+    if (cdpEndpoint) {
+      try {
+        this.browser = await chromium.connectOverCDP(cdpEndpoint);
+        const contexts = this.browser.contexts();
+        this.context = contexts.length > 0 ? contexts[0] : await this.browser.newContext({ viewport: this.options.viewport });
+        const pages = this.context.pages();
+        this.page = pages.length > 0 ? pages[0] : await this.context.newPage();
+        this.page.setDefaultTimeout(30000);
+        this.page.setDefaultNavigationTimeout(45000);
+        return this.page;
+      } catch (err: any) {
+        console.warn(`[BrowserManager] Failed to connect to CDP at ${cdpEndpoint}: ${err?.message}. Falling back to standard browser.`);
+      }
+    }
+
+    // 2. Persistent Profile (real signed-in Google Chrome or persistent profile context)
+    const shouldUsePersistent =
+      this.options.userDataDir ||
+      this.options.useSystemChrome ||
+      process.env.USE_REAL_CHROME === 'true' ||
+      process.env.USE_PERSISTENT_PROFILE === 'true';
+
+    if (shouldUsePersistent) {
+      const defaultProfileDir = path.resolve(this.sessionDir, 'chrome-profile');
+      const profileDir = this.options.userDataDir || process.env.CHROME_USER_DATA_DIR || defaultProfileDir;
+
+      if (!fs.existsSync(profileDir)) {
+        fs.mkdirSync(profileDir, { recursive: true });
+      }
+
+      const persistentOptions: any = {
+        headless: this.options.headless,
+        slowMo: this.options.slowMo,
+        viewport: this.options.viewport,
+        userAgent: this.options.userAgent,
+        args: [
+          '--no-sandbox',
+          '--disable-setuid-sandbox',
+          '--disable-dev-shm-usage',
+          '--disable-blink-features=AutomationControlled',
+        ],
+      };
+
+      if (this.options.useSystemChrome || process.env.USE_REAL_CHROME === 'true') {
+        persistentOptions.channel = 'chrome';
+      }
+
+      this.context = await chromium.launchPersistentContext(profileDir, persistentOptions);
+      const pages = this.context.pages();
+      this.page = pages.length > 0 ? pages[0] : await this.context.newPage();
+      this.page.setDefaultTimeout(30000);
+      this.page.setDefaultNavigationTimeout(45000);
+      return this.page;
+    }
+
+    // 3. Standard clean Chromium launch
     if (!this.browser) {
       this.browser = await chromium.launch({
         headless: this.options.headless,
