@@ -573,11 +573,11 @@ export function getDashboardHtml(): string {
     </div>
   </div>
 
-  <!-- Model settings & Provider Configuration Modal (Matching Reference Design) -->
+  <!-- Model Settings & Provider Configuration Modal -->
   <div id="settingsModal" class="hidden fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-2 sm:p-4 md:p-6">
     <div class="w-full max-w-5xl h-[85vh] max-h-[750px] bg-light-bg dark:bg-[#111113] border border-light-border dark:border-white/10 rounded-2xl shadow-2xl flex overflow-hidden text-xs">
       
-      <!-- LEFT SIDEBAR -->
+      <!-- LEFT SIDEBAR: Providers List Only -->
       <aside class="w-60 sm:w-64 border-r border-light-border dark:border-white/10 bg-light-card/60 dark:bg-[#161618] flex flex-col justify-between p-3 select-none flex-shrink-0">
         <div class="space-y-4 overflow-y-auto">
           <!-- Back to workspace -->
@@ -586,45 +586,13 @@ export function getDashboardHtml(): string {
             <span>Back to workspace</span>
           </button>
 
-          <!-- Basics section -->
-          <div class="space-y-1">
-            <div class="px-2.5 py-1 text-[10px] font-semibold text-light-muted dark:text-zinc-500 uppercase tracking-wider">Basics</div>
-            <button type="button" onclick="window.switchSettingsTab('general')" id="tabBtn_general" class="settings-nav-item w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-light-muted dark:text-zinc-400 hover:text-light-text dark:hover:text-white hover:bg-light-card dark:hover:bg-zinc-800 cursor-pointer">
-              <span>👤</span><span>General</span>
-            </button>
-            <button type="button" onclick="window.switchSettingsTab('appearance')" id="tabBtn_appearance" class="settings-nav-item w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-light-muted dark:text-zinc-400 hover:text-light-text dark:hover:text-white hover:bg-light-card dark:hover:bg-zinc-800 cursor-pointer">
-              <span>🎨</span><span>Appearance</span>
-            </button>
-            <button type="button" onclick="window.switchSettingsTab('models')" id="tabBtn_models" class="settings-nav-item active w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-light-card dark:bg-zinc-800 text-light-text dark:text-white font-semibold cursor-pointer">
-              <span>📦</span><span>Model settings</span>
-            </button>
-            <button type="button" onclick="window.switchSettingsTab('browser_use')" id="tabBtn_browser_use" class="settings-nav-item w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-light-muted dark:text-zinc-400 hover:text-light-text dark:hover:text-white hover:bg-light-card dark:hover:bg-zinc-800 cursor-pointer">
-              <span>🌐</span><span>Browser Use</span>
-            </button>
-            <button type="button" onclick="window.switchSettingsTab('computer_use')" id="tabBtn_computer_use" class="settings-nav-item w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-light-muted dark:text-zinc-400 hover:text-light-text dark:hover:text-white hover:bg-light-card dark:hover:bg-zinc-800 cursor-pointer">
-              <span>💻</span><span>Computer Use</span>
-            </button>
-          </div>
-
-          <!-- Providers section -->
-          <div class="space-y-1">
-            <div class="px-2.5 py-1 text-[10px] font-semibold text-light-muted dark:text-zinc-500 uppercase tracking-wider">Providers</div>
-            <button type="button" onclick="window.selectProvider('zai')" id="providerTab_zai" class="provider-nav-item w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-light-muted dark:text-zinc-400 hover:text-light-text dark:hover:text-white hover:bg-light-card dark:hover:bg-zinc-800 cursor-pointer">
-              <div class="flex items-center gap-2">
-                <span class="w-4 h-4 rounded bg-zinc-700 text-[10px] flex items-center justify-center font-bold text-white">Z</span>
-                <span>Z.ai</span>
-              </div>
-              <span class="w-2 h-2 rounded-full bg-zinc-600"></span>
-            </button>
-          </div>
-
-          <!-- Custom providers section -->
-          <div class="space-y-1">
-            <div class="px-2.5 py-1 text-[10px] font-semibold text-light-muted dark:text-zinc-500 uppercase tracking-wider">Custom providers</div>
-            <div id="customProvidersNavList" class="space-y-0.5">
-              <!-- Dynamically rendered OpenRouter, Gemini, etc. -->
+          <!-- Providers Section -->
+          <div class="space-y-1.5">
+            <div class="px-2.5 py-1 text-[11px] font-bold text-light-muted dark:text-zinc-400 uppercase tracking-wider">Providers</div>
+            <div id="customProvidersNavList" class="space-y-1">
+              <!-- Dynamically rendered Gemini, OpenRouter, etc. -->
             </div>
-            <button type="button" onclick="window.promptAddProvider()" class="w-full flex items-center gap-1.5 px-2.5 py-1.5 text-[11px] text-light-muted dark:text-zinc-400 hover:text-emerald-500 dark:hover:text-emerald-400 transition-colors cursor-pointer">
+            <button type="button" onclick="window.promptAddProvider()" class="w-full flex items-center gap-1.5 px-2.5 py-2 rounded-lg text-xs font-medium text-light-muted dark:text-zinc-400 hover:text-emerald-500 dark:hover:text-emerald-400 hover:bg-light-card dark:hover:bg-zinc-800/60 transition-colors cursor-pointer">
               <span>+ Add provider</span>
             </button>
           </div>
@@ -643,150 +611,95 @@ export function getDashboardHtml(): string {
         </div>
       </aside>
 
-      <!-- RIGHT MAIN AREA -->
-      <section class="flex-1 flex flex-col bg-light-bg dark:bg-[#111113] overflow-y-auto min-w-0">
-        
-        <!-- Tab: Model Settings (Primary) -->
-        <div id="settingsView_models" class="p-6 space-y-5">
-          <div class="flex items-start justify-between">
-            <div>
-              <h2 class="text-xl font-bold tracking-tight text-light-text dark:text-white">Model settings</h2>
-              <p class="text-xs text-light-muted dark:text-zinc-400 mt-1">Manage custom model providers. Once configured, they can be selected during chat.</p>
-            </div>
-            <button type="button" onclick="window.renderModelSettingsView()" class="p-1.5 rounded-lg border border-light-border dark:border-zinc-800 text-light-muted dark:text-zinc-400 hover:text-white hover:bg-light-card dark:hover:bg-zinc-800 transition-colors cursor-pointer" title="Refresh settings">
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
-            </button>
+      <!-- RIGHT MAIN AREA: Provider Configuration & Model List -->
+      <section class="flex-1 flex flex-col bg-light-bg dark:bg-[#111113] overflow-y-auto min-w-0 p-6 space-y-5">
+        <div class="flex items-start justify-between">
+          <div>
+            <h2 class="text-xl font-bold tracking-tight text-light-text dark:text-white">Model settings</h2>
+            <p class="text-xs text-light-muted dark:text-zinc-400 mt-1">Manage custom model providers. Once configured, they can be selected during chat.</p>
           </div>
-
-          <!-- Provider Detail Card -->
-          <div class="rounded-2xl border border-light-border dark:border-white/10 bg-light-card/40 dark:bg-[#18181b]/50 p-5 space-y-4">
-            
-            <!-- Provider Title Bar -->
-            <div class="flex items-center justify-between pb-3 border-b border-light-border/60 dark:border-white/10">
-              <div class="flex items-center gap-2">
-                <span id="curProviderTitle" class="text-base font-bold text-light-text dark:text-white">Gemini</span>
-                <button type="button" onclick="window.editProviderName()" class="text-light-muted dark:text-zinc-400 hover:text-white cursor-pointer" title="Edit provider name">✏️</button>
-                <div class="flex items-center gap-1 ml-2">
-                  <button type="button" id="curProviderEnabledBtn" onclick="window.toggleProviderStatus(true)" class="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 cursor-pointer">Enabled</button>
-                  <button type="button" id="curProviderDisableBtn" onclick="window.toggleProviderStatus(false)" class="px-2.5 py-0.5 rounded-full text-[11px] font-semibold text-zinc-500 hover:text-zinc-300 border border-transparent cursor-pointer">Disable</button>
-                </div>
-              </div>
-              <button type="button" onclick="window.deleteCurrentProvider()" id="deleteProviderBtn" class="text-zinc-500 hover:text-rose-400 cursor-pointer p-1" title="Delete custom provider">🗑️</button>
-            </div>
-
-            <!-- Provider Parameters -->
-            <div class="space-y-3.5">
-              <!-- Base URL -->
-              <div class="space-y-1">
-                <label class="block font-semibold text-light-muted dark:text-zinc-400">Base URL</label>
-                <input type="text" id="curProviderBaseUrl" onchange="window.saveProviderField('baseUrl', this.value)" class="w-full px-3.5 py-2 rounded-xl bg-light-card dark:bg-[#202024] border border-light-border dark:border-white/10 text-light-text dark:text-white font-mono text-xs focus:outline-none focus:border-emerald-500/60" placeholder="https://generativelanguage.googleapis.com/v1beta/openai">
-              </div>
-
-              <!-- API Format -->
-              <div class="space-y-1">
-                <label class="block font-semibold text-light-muted dark:text-zinc-400">API format</label>
-                <select id="curProviderApiFormat" onchange="window.saveProviderField('apiFormat', this.value)" class="w-full px-3.5 py-2 rounded-xl bg-light-card dark:bg-[#202024] border border-light-border dark:border-white/10 text-light-text dark:text-white text-xs focus:outline-none focus:border-emerald-500/60">
-                  <option value="openai">OpenAI compatible (/v1/chat/completions)</option>
-                  <option value="anthropic">Anthropic messages (/v1/messages)</option>
-                  <option value="gemini">Google Gemini Native</option>
-                </select>
-              </div>
-
-              <!-- API Key -->
-              <div class="space-y-1">
-                <label class="block font-semibold text-light-muted dark:text-zinc-400">API key</label>
-                <div class="relative">
-                  <input type="password" id="curProviderApiKey" onchange="window.saveProviderField('apiKey', this.value)" placeholder="Enter API key..." class="w-full px-3.5 py-2 pr-10 rounded-xl bg-light-card dark:bg-[#202024] border border-light-border dark:border-white/10 text-light-text dark:text-white font-mono text-xs focus:outline-none focus:border-emerald-500/60">
-                  <button type="button" onclick="window.toggleApiKeyVisibility()" class="absolute right-3 top-2 text-light-muted dark:text-zinc-400 hover:text-white cursor-pointer" title="Toggle visibility">👁️</button>
-                </div>
-              </div>
-            </div>
-
-            <!-- Model List Section -->
-            <div class="space-y-2.5 pt-2">
-              <div class="font-semibold text-light-text dark:text-white text-xs flex items-center justify-between">
-                <span>Model list</span>
-                <span class="text-[11px] text-light-muted dark:text-zinc-400 font-normal">Click 🔗 to select as active model</span>
-              </div>
-
-              <!-- Model Cards Container -->
-              <div id="curProviderModelList" class="space-y-1.5">
-                <!-- Dynamically rendered model cards -->
-              </div>
-
-              <!-- Add Model Button & Inline Form -->
-              <div id="addModelInlineArea" class="pt-1">
-                <button type="button" id="showAddModelBtn" onclick="window.toggleAddModelForm(true)" class="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-dashed border-light-border dark:border-white/15 hover:border-emerald-500/50 text-light-muted dark:text-zinc-400 hover:text-emerald-400 transition-colors w-full justify-center font-medium cursor-pointer">
-                  <span>+ Add model</span>
-                </button>
-
-                <!-- Hidden Inline Form -->
-                <div id="addModelForm" class="hidden p-3 rounded-xl border border-light-border dark:border-white/15 bg-light-card dark:bg-[#202024] space-y-2.5">
-                  <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                    <input type="text" id="newModelIdInput" placeholder="Model ID (e.g. gemini-3.8-flash-tiered[1m])" class="w-full px-3 py-1.5 rounded-lg bg-light-bg dark:bg-[#161618] border border-light-border dark:border-white/10 text-light-text dark:text-white font-mono text-xs focus:outline-none">
-                    <input type="text" id="newModelTagsInput" placeholder="Tags (e.g. Vision, 1M)" class="w-full px-3 py-1.5 rounded-lg bg-light-bg dark:bg-[#161618] border border-light-border dark:border-white/10 text-light-text dark:text-white text-xs focus:outline-none">
-                  </div>
-                  <div class="flex justify-end gap-2">
-                    <button type="button" onclick="window.toggleAddModelForm(false)" class="px-3 py-1 rounded-lg text-light-muted dark:text-zinc-400 hover:text-white cursor-pointer">Cancel</button>
-                    <button type="button" onclick="window.submitAddNewModel()" class="px-3.5 py-1 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-white font-semibold cursor-pointer">Save &amp; Activate Model</button>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-          </div>
+          <button type="button" onclick="window.renderModelSettingsView()" class="p-1.5 rounded-lg border border-light-border dark:border-zinc-800 text-light-muted dark:text-zinc-400 hover:text-white hover:bg-light-card dark:hover:bg-zinc-800 transition-colors cursor-pointer" title="Refresh settings">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+          </button>
         </div>
 
-        <!-- Tab: General (User Profile) -->
-        <div id="settingsView_general" class="hidden p-6 space-y-5">
-          <h2 class="text-xl font-bold tracking-tight text-light-text dark:text-white">General settings</h2>
-          <p class="text-xs text-light-muted dark:text-zinc-400">Manage your user profile details.</p>
-          <div class="max-w-md space-y-3.5 p-5 rounded-2xl border border-light-border dark:border-white/10 bg-light-card/40 dark:bg-[#18181b]/50">
+        <!-- Provider Detail Card -->
+        <div class="rounded-2xl border border-light-border dark:border-white/10 bg-light-card/40 dark:bg-[#18181b]/50 p-5 space-y-4">
+          
+          <!-- Provider Title Bar -->
+          <div class="flex items-center justify-between pb-3 border-b border-light-border/60 dark:border-white/10">
+            <div class="flex items-center gap-2">
+              <span id="curProviderTitle" class="text-base font-bold text-light-text dark:text-white">Gemini</span>
+              <button type="button" onclick="window.editProviderName()" class="text-light-muted dark:text-zinc-400 hover:text-white cursor-pointer" title="Edit provider name">✏️</button>
+              <div class="flex items-center gap-1 ml-2">
+                <button type="button" id="curProviderEnabledBtn" onclick="window.toggleProviderStatus(true)" class="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 cursor-pointer">Enabled</button>
+                <button type="button" id="curProviderDisableBtn" onclick="window.toggleProviderStatus(false)" class="px-2.5 py-0.5 rounded-full text-[11px] font-semibold text-zinc-500 hover:text-zinc-300 border border-transparent cursor-pointer">Disable</button>
+              </div>
+            </div>
+            <button type="button" onclick="window.deleteCurrentProvider()" id="deleteProviderBtn" class="text-zinc-500 hover:text-rose-400 cursor-pointer p-1" title="Delete custom provider">🗑️</button>
+          </div>
+
+          <!-- Provider Parameters -->
+          <div class="space-y-3.5">
+            <!-- Base URL -->
             <div class="space-y-1">
-              <label class="block font-semibold text-light-muted dark:text-zinc-400">User Name</label>
-              <input type="text" id="prefUsername" class="w-full px-3.5 py-2 rounded-xl bg-light-card dark:bg-[#202024] border border-light-border dark:border-white/10 text-light-text dark:text-white text-xs">
+              <label class="block font-semibold text-light-muted dark:text-zinc-400">Base URL</label>
+              <input type="text" id="curProviderBaseUrl" onchange="window.saveProviderField('baseUrl', this.value)" class="w-full px-3.5 py-2 rounded-xl bg-light-card dark:bg-[#202024] border border-light-border dark:border-white/10 text-light-text dark:text-white font-mono text-xs focus:outline-none focus:border-emerald-500/60" placeholder="https://generativelanguage.googleapis.com/v1beta/openai">
             </div>
+
+            <!-- API Format -->
             <div class="space-y-1">
-              <label class="block font-semibold text-light-muted dark:text-zinc-400">Email Address</label>
-              <input type="email" id="prefEmail" class="w-full px-3.5 py-2 rounded-xl bg-light-card dark:bg-[#202024] border border-light-border dark:border-white/10 text-light-text dark:text-white text-xs">
+              <label class="block font-semibold text-light-muted dark:text-zinc-400">API format</label>
+              <select id="curProviderApiFormat" onchange="window.saveProviderField('apiFormat', this.value)" class="w-full px-3.5 py-2 rounded-xl bg-light-card dark:bg-[#202024] border border-light-border dark:border-white/10 text-light-text dark:text-white text-xs focus:outline-none focus:border-emerald-500/60">
+                <option value="openai">OpenAI compatible (/v1/chat/completions)</option>
+                <option value="anthropic">Anthropic messages (/v1/messages)</option>
+                <option value="gemini">Google Gemini Native</option>
+              </select>
             </div>
-            <button type="button" onclick="window.saveGeneralProfile()" class="px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-white font-semibold cursor-pointer">Save Profile</button>
-          </div>
-        </div>
 
-        <!-- Tab: Appearance -->
-        <div id="settingsView_appearance" class="hidden p-6 space-y-5">
-          <h2 class="text-xl font-bold tracking-tight text-light-text dark:text-white">Appearance</h2>
-          <p class="text-xs text-light-muted dark:text-zinc-400">Customize assistant theme and visual interface.</p>
-          <div class="max-w-md space-y-3 p-5 rounded-2xl border border-light-border dark:border-white/10 bg-light-card/40 dark:bg-[#18181b]/50">
-            <div class="flex items-center justify-between">
-              <span class="text-light-text dark:text-white font-medium">Dark Mode Theme</span>
-              <button type="button" onclick="window.toggleTheme()" class="px-3.5 py-1.5 rounded-xl bg-emerald-500 text-white font-semibold cursor-pointer">Toggle Theme</button>
+            <!-- API Key -->
+            <div class="space-y-1">
+              <label class="block font-semibold text-light-muted dark:text-zinc-400">API key</label>
+              <div class="relative">
+                <input type="password" id="curProviderApiKey" onchange="window.saveProviderField('apiKey', this.value)" placeholder="Enter API key..." class="w-full px-3.5 py-2 pr-10 rounded-xl bg-light-card dark:bg-[#202024] border border-light-border dark:border-white/10 text-light-text dark:text-white font-mono text-xs focus:outline-none focus:border-emerald-500/60">
+                <button type="button" onclick="window.toggleApiKeyVisibility()" class="absolute right-3 top-2 text-light-muted dark:text-zinc-400 hover:text-white cursor-pointer" title="Toggle visibility">👁️</button>
+              </div>
             </div>
           </div>
-        </div>
 
-        <!-- Tab: Browser Use -->
-        <div id="settingsView_browser_use" class="hidden p-6 space-y-5">
-          <h2 class="text-xl font-bold tracking-tight text-light-text dark:text-white">Browser Use</h2>
-          <p class="text-xs text-light-muted dark:text-zinc-400">Configure Playwright browser automation execution parameters.</p>
-          <div class="max-w-md space-y-3 p-5 rounded-2xl border border-light-border dark:border-white/10 bg-light-card/40 dark:bg-[#18181b]/50">
-            <div class="text-light-muted dark:text-zinc-400">Viewport: 1280 × 800, Headless Playwright Chromium</div>
-            <div class="text-emerald-500 font-semibold">✓ Accessibility Snapshot Perception Engine Active</div>
+          <!-- Model List Section -->
+          <div class="space-y-2.5 pt-2">
+            <div class="font-semibold text-light-text dark:text-white text-xs flex items-center justify-between">
+              <span>Model list</span>
+              <span class="text-[11px] text-light-muted dark:text-zinc-400 font-normal">Click 🔗 to select as active model</span>
+            </div>
+
+            <!-- Model Cards Container -->
+            <div id="curProviderModelList" class="space-y-1.5">
+              <!-- Dynamically rendered model cards -->
+            </div>
+
+            <!-- Add Model Button & Inline Form -->
+            <div id="addModelInlineArea" class="pt-1">
+              <button type="button" id="showAddModelBtn" onclick="window.toggleAddModelForm(true)" class="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-dashed border-light-border dark:border-white/15 hover:border-emerald-500/50 text-light-muted dark:text-zinc-400 hover:text-emerald-400 transition-colors w-full justify-center font-medium cursor-pointer">
+                <span>+ Add model</span>
+              </button>
+
+              <!-- Hidden Inline Form -->
+              <div id="addModelForm" class="hidden p-3 rounded-xl border border-light-border dark:border-white/15 bg-light-card dark:bg-[#202024] space-y-2.5">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <input type="text" id="newModelIdInput" placeholder="Model ID (e.g. gemini-3.8-flash-tiered[1m])" class="w-full px-3 py-1.5 rounded-lg bg-light-bg dark:bg-[#161618] border border-light-border dark:border-white/10 text-light-text dark:text-white font-mono text-xs focus:outline-none">
+                  <input type="text" id="newModelTagsInput" placeholder="Tags (e.g. Vision, 1M)" class="w-full px-3 py-1.5 rounded-lg bg-light-bg dark:bg-[#161618] border border-light-border dark:border-white/10 text-light-text dark:text-white text-xs focus:outline-none">
+                </div>
+                <div class="flex justify-end gap-2">
+                  <button type="button" onclick="window.toggleAddModelForm(false)" class="px-3 py-1 rounded-lg text-light-muted dark:text-zinc-400 hover:text-white cursor-pointer">Cancel</button>
+                  <button type="button" onclick="window.submitAddNewModel()" class="px-3.5 py-1 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-white font-semibold cursor-pointer">Save &amp; Activate Model</button>
+                </div>
+              </div>
+            </div>
           </div>
-        </div>
 
-        <!-- Tab: Computer Use -->
-        <div id="settingsView_computer_use" class="hidden p-6 space-y-5">
-          <h2 class="text-xl font-bold tracking-tight text-light-text dark:text-white">Computer Use</h2>
-          <p class="text-xs text-light-muted dark:text-zinc-400">Configure native desktop and local file tools.</p>
-          <div class="max-w-md space-y-3 p-5 rounded-2xl border border-light-border dark:border-white/10 bg-light-card/40 dark:bg-[#18181b]/50">
-            <div class="text-emerald-500 font-semibold">✓ Content-Aware Smart Organizer Enabled</div>
-            <div class="text-emerald-500 font-semibold">✓ Semantic Folder Renaming Active</div>
-            <div class="text-emerald-500 font-semibold">✓ Transactional Undo Reversibility Ready</div>
-          </div>
         </div>
-
       </section>
     </div>
   </div>
@@ -932,7 +845,7 @@ export function getDashboardHtml(): string {
       window.showToast('Welcome, ' + username + '!');
     };
 
-    // Model Settings & Custom Providers Management (Matching Design Reference)
+    // Model Settings & Providers Management
     var DEFAULT_PROVIDERS = [
       {
         id: 'gemini',
@@ -965,17 +878,6 @@ export function getDashboardHtml(): string {
           { id: 'openai/gpt-4o-mini', tags: ['Vision'] },
           { id: 'anthropic/claude-sonnet-4', tags: ['1M'] }
         ]
-      },
-      {
-        id: 'zai',
-        name: 'Z.ai',
-        enabled: false,
-        baseUrl: 'http://localhost:8080',
-        apiFormat: 'anthropic',
-        apiKey: '',
-        models: [
-          { id: 'z-agent-3.5', tags: ['Local'] }
-        ]
       }
     ];
 
@@ -986,7 +888,10 @@ export function getDashboardHtml(): string {
         var raw = localStorage.getItem('browser_agent_custom_providers');
         if (raw) {
           var parsed = JSON.parse(raw);
-          if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            // Strictly exclude zai from any saved state
+            return parsed.filter(function(p) { return p.id !== 'zai'; });
+          }
         }
       } catch (e) {}
       localStorage.setItem('browser_agent_custom_providers', JSON.stringify(DEFAULT_PROVIDERS));
@@ -994,7 +899,8 @@ export function getDashboardHtml(): string {
     };
 
     window.saveProviders = function(providers) {
-      localStorage.setItem('browser_agent_custom_providers', JSON.stringify(providers));
+      var clean = providers.filter(function(p) { return p.id !== 'zai'; });
+      localStorage.setItem('browser_agent_custom_providers', JSON.stringify(clean));
     };
 
     window.selectProvider = function(providerId) {
@@ -1002,39 +908,15 @@ export function getDashboardHtml(): string {
       window.renderModelSettingsView();
     };
 
-    window.switchSettingsTab = function(tabName) {
-      var tabs = ['general', 'appearance', 'models', 'browser_use', 'computer_use'];
-      tabs.forEach(function(t) {
-        var btn = document.getElementById('tabBtn_' + t);
-        var view = document.getElementById('settingsView_' + t);
-        if (btn) {
-          if (t === tabName) {
-            btn.className = 'settings-nav-item active w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-light-card dark:bg-zinc-800 text-light-text dark:text-white font-semibold cursor-pointer';
-          } else {
-            btn.className = 'settings-nav-item w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-light-muted dark:text-zinc-400 hover:text-light-text dark:hover:text-white hover:bg-light-card dark:hover:bg-zinc-800 cursor-pointer';
-          }
-        }
-        if (view) {
-          if (t === tabName) view.classList.remove('hidden');
-          else view.classList.add('hidden');
-        }
-      });
-    };
-
-    window.openSettingsModal = function(tab) {
+    window.openSettingsModal = function() {
       var modal = document.getElementById('settingsModal');
       var user = window.getSavedUser() || { username: 'Krishna', email: 'krishna@example.com' };
       var uBottom = document.getElementById('modalUserBottomName');
       var eBottom = document.getElementById('modalUserBottomEmail');
-      var uInput = document.getElementById('prefUsername');
-      var eInput = document.getElementById('prefEmail');
 
       if (uBottom) uBottom.textContent = user.username || 'Krishna Jadhav';
       if (eBottom) eBottom.textContent = user.email || 'krishna@example.com';
-      if (uInput) uInput.value = user.username || 'Krishna';
-      if (eInput) eInput.value = user.email || 'krishna@example.com';
 
-      window.switchSettingsTab(tab || 'models');
       window.renderModelSettingsView();
       if (modal) modal.classList.remove('hidden');
     };
@@ -1051,14 +933,28 @@ export function getDashboardHtml(): string {
       if (!curProv) return;
       window.currentSelectedProviderId = curProv.id;
 
-      // 1. Render custom providers list on sidebar
+      // 1. Render providers list on sidebar
       var customList = document.getElementById('customProvidersNavList');
       if (customList) {
         customList.innerHTML = '';
-        providers.filter(function(p) { return p.id !== 'zai'; }).forEach(function(prov) {
+        providers.forEach(function(prov) {
           var isCur = prov.id === curProv.id;
           var btn = document.createElement('button');
           btn.type = 'button';
+          btn.className = 'w-full flex items-center justify-between px-3 py-2 rounded-xl transition-colors cursor-pointer ' +
+            (isCur ? 'bg-light-card dark:bg-zinc-800 text-light-text dark:text-white font-semibold shadow-sm' : 'text-light-muted dark:text-zinc-400 hover:text-white hover:bg-light-card dark:hover:bg-zinc-800/60');
+          btn.innerHTML =
+            '<div class="flex items-center gap-2.5 truncate">' +
+              '<span class="text-sm">' + (prov.id === 'openrouter' ? '📦' : prov.id === 'gemini' ? '💎' : '⚡') + '</span>' +
+              '<span class="truncate">' + window.esc(prov.name) + '</span>' +
+            '</div>' +
+            '<span class="w-2 h-2 rounded-full flex-shrink-0 ' + (prov.enabled ? 'bg-emerald-500' : 'bg-zinc-600') + '"></span>';
+          btn.onclick = function() {
+            window.selectProvider(prov.id);
+          };
+          customList.appendChild(btn);
+        });
+      }
           btn.className = 'w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg transition-colors cursor-pointer ' +
             (isCur ? 'bg-light-card dark:bg-zinc-800 text-light-text dark:text-white font-semibold' : 'text-light-muted dark:text-zinc-400 hover:text-white hover:bg-light-card dark:hover:bg-zinc-800');
           btn.innerHTML =
@@ -2502,7 +2398,7 @@ export function getDashboardHtml(): string {
           headless: prefs.headless !== undefined ? prefs.headless : true,
           slowMo: prefs.slowMo !== undefined ? parseInt(prefs.slowMo, 10) : 50,
           apiKey: (activeProvider && activeProvider.apiKey && activeProvider.apiKey.trim()) ? activeProvider.apiKey.trim() : ((prefs.apiKey && prefs.apiKey.trim()) ? prefs.apiKey.trim() : undefined),
-          baseUrl: activeProvider ? activeProvider.baseUrl : undefined
+          baseUrl: (activeProvider && activeProvider.apiKey && activeProvider.apiKey.trim()) ? activeProvider.baseUrl : undefined
         })
       })
       .then(function(res) { return res.json(); })
