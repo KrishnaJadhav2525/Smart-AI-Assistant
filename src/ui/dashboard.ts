@@ -756,9 +756,9 @@ export function getDashboardHtml(): string {
     window.getSavedUser = function() {
       try {
         var raw = localStorage.getItem('browser_agent_user');
-        return raw ? JSON.parse(raw) : null;
+        return raw ? JSON.parse(raw) : { username: 'Krishna', email: 'krishna@example.com' };
       } catch (e) {
-        return null;
+        return { username: 'Krishna', email: 'krishna@example.com' };
       }
     };
 
@@ -788,11 +788,6 @@ export function getDashboardHtml(): string {
       var user = window.getSavedUser();
       var prefs = window.getSavedPreferences();
       var loginGate = document.getElementById('loginGate');
-
-      if (!user) {
-        if (loginGate) loginGate.classList.remove('hidden');
-        return;
-      }
 
       if (loginGate) loginGate.classList.add('hidden');
 
@@ -949,20 +944,6 @@ export function getDashboardHtml(): string {
               '<span class="truncate">' + window.esc(prov.name) + '</span>' +
             '</div>' +
             '<span class="w-2 h-2 rounded-full flex-shrink-0 ' + (prov.enabled ? 'bg-emerald-500' : 'bg-zinc-600') + '"></span>';
-          btn.onclick = function() {
-            window.selectProvider(prov.id);
-          };
-          customList.appendChild(btn);
-        });
-      }
-          btn.className = 'w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg transition-colors cursor-pointer ' +
-            (isCur ? 'bg-light-card dark:bg-zinc-800 text-light-text dark:text-white font-semibold' : 'text-light-muted dark:text-zinc-400 hover:text-white hover:bg-light-card dark:hover:bg-zinc-800');
-          btn.innerHTML =
-            '<div class="flex items-center gap-2">' +
-              '<span>' + (prov.id === 'openrouter' ? '📦' : prov.id === 'gemini' ? '💎' : '⚡') + '</span>' +
-              '<span>' + window.esc(prov.name) + '</span>' +
-            '</div>' +
-            '<span class="w-2 h-2 rounded-full ' + (prov.enabled ? 'bg-emerald-500' : 'bg-zinc-600') + '"></span>';
           btn.onclick = function() {
             window.selectProvider(prov.id);
           };
