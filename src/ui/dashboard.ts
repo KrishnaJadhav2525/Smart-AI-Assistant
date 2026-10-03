@@ -363,6 +363,11 @@ export function getDashboardHtml(): string {
                 <textarea id="taskPromptInput" rows="2" placeholder="Instruct the agent to search, navigate, or summarize..." class="w-full resize-none bg-transparent py-1.5 text-sm focus:outline-none text-light-text dark:text-gpt-text placeholder:text-light-muted dark:placeholder:text-gpt-muted max-h-36 overflow-y-auto leading-relaxed relative z-30 cursor-text pointer-events-auto"></textarea>
 
                 <div class="flex items-center gap-1.5 flex-shrink-0 relative z-30">
+                  <!-- Active Voice Mic Button (faster-whisper small.en) -->
+                  <button type="button" id="voiceMicBtn" onclick="window.toggleVoiceListening()" class="w-9 h-9 rounded-full bg-light-bg dark:bg-gpt-card hover:bg-emerald-500/15 text-light-muted dark:text-gpt-muted hover:text-emerald-500 border border-light-border dark:border-gpt-border flex items-center justify-center transition-all shadow-md cursor-pointer relative z-30" title="Tap to speak (Offline faster-whisper small.en)">
+                    <span id="voiceMicIcon" class="text-sm">🎙️</span>
+                  </button>
+
                   <!-- Pause / Resume Button -->
                   <button type="button" id="pauseAgentBtn" onclick="window.togglePause()" class="hidden w-9 h-9 rounded-full bg-amber-500/20 hover:bg-amber-500/30 text-amber-400 border border-amber-500/30 flex items-center justify-center transition-all shadow-md cursor-pointer relative z-30" title="Pause / Resume Execution">
                     <span id="pauseIcon" class="text-xs font-bold font-mono">⏸</span>
@@ -825,6 +830,260 @@ export function getDashboardHtml(): string {
       } else {
         sidebar.classList.remove('-ml-64');
         if (expandBtn) expandBtn.classList.add('hidden');
+      }
+    };
+
+    // Offline Speech-to-Text with faster-whisper (small.en)
+    window.voiceState = {
+      isListening: false,
+      audioContext: null,
+      mediaStream: null,
+      scriptProcessor: null,
+      sourceNode: null,
+      noiseFloor: 0.01,
+      preRollBuffer: [],
+      speechBuffer: [],
+      isSpeaking: false,
+      silenceStartTime: 0,
+      speechStartTime: 0
+    };
+
+    function encodeWavPcm16(float32Arrays, sampleRate) {
+      var totalLength = 0;
+      for (var i = 0; i < float32Arrays.length; i++) {
+        totalLength += float32Arrays[i].length;
+      }
+      var flattened = new Float32Array(totalLength);
+      var offset = 0;
+      for (var i = 0; i < float32Arrays.length; i++) {
+        flattened.set(float32Arrays[i], offset);
+        offset += float32Arrays[i].length;
+      }
+
+      var buffer = new ArrayBuffer(44 + flattened.length * 2);
+      var view = new DataView(buffer);
+
+      function writeStr(offset, str) {
+        for (var idx = 0; idx < str.length; idx++) {
+          view.setUint8(offset + idx, str.charCodeAt(idx));
+        }
+      }
+
+      writeStr(0, 'RIFF');
+      view.setUint32(4, 36 + flattened.length * 2, true);
+      writeStr(8, 'WAVE');
+      writeStr(12, 'fmt ');
+      view.setUint32(16, 16, true);
+      view.setUint16(20, 1, true); // Linear PCM
+      view.setUint16(22, 1, true); // Mono
+      view.setUint32(24, sampleRate, true);
+      view.setUint32(28, sampleRate * 2, true);
+      view.setUint16(32, 2, true);
+      view.setUint16(34, 16, true);
+      writeStr(36, 'data');
+      view.setUint32(40, flattened.length * 2, true);
+
+      var sampleOffset = 44;
+      for (var j = 0; j < flattened.length; j++) {
+        var s = Math.max(-1, Math.min(1, flattened[j]));
+        view.setInt16(sampleOffset, s < 0 ? s * 0x8000 : s * 0x7FFF, true);
+        sampleOffset += 2;
+      }
+
+      return new Blob([view], { type: 'audio/wav' });
+    }
+
+    window.toggleVoiceListening = function() {
+      if (window.voiceState.isListening) {
+        window.stopVoiceListening(true);
+      } else {
+        window.startVoiceListening();
+      }
+    };
+
+    window.startVoiceListening = function() {
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        window.showToast('Microphone access is not supported by your browser.');
+        return;
+      }
+
+      navigator.mediaDevices.getUserMedia({
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true
+        },
+        video: false
+      })
+      .then(function(stream) {
+        var AudioCtx = window.AudioContext || window.webkitAudioContext;
+        var audioCtx = new AudioCtx({ sampleRate: 16000 });
+        var source = audioCtx.createMediaStreamSource(stream);
+        var processor = audioCtx.createScriptProcessor(4096, 1, 1);
+
+        window.voiceState.isListening = true;
+        window.voiceState.audioContext = audioCtx;
+        window.voiceState.mediaStream = stream;
+        window.voiceState.sourceNode = source;
+        window.voiceState.scriptProcessor = processor;
+        window.voiceState.preRollBuffer = [];
+        window.voiceState.speechBuffer = [];
+        window.voiceState.isSpeaking = false;
+        window.voiceState.silenceStartTime = 0;
+        window.voiceState.speechStartTime = 0;
+        window.voiceState.noiseFloor = 0.01;
+
+        window.updateVoiceUI(true);
+        window.showToast('🎙️ Listening... speak now');
+
+        processor.onaudioprocess = function(e) {
+          if (!window.voiceState.isListening) return;
+
+          var input = e.inputBuffer.getChannelData(0);
+          var copy = new Float32Array(input.length);
+          copy.set(input);
+
+          // 1. RMS Energy Calculation
+          var sum = 0;
+          for (var i = 0; i < copy.length; i++) {
+            sum += copy[i] * copy[i];
+          }
+          var rms = Math.sqrt(sum / copy.length);
+
+          // 2. Dynamic Noise Floor Tracking
+          window.voiceState.noiseFloor = window.voiceState.noiseFloor * 0.99 + rms * 0.01;
+          var speechThreshold = Math.max(0.015, window.voiceState.noiseFloor * 2.2);
+          var isSpeech = rms > speechThreshold;
+
+          if (isSpeech) {
+            if (!window.voiceState.isSpeaking) {
+              window.voiceState.isSpeaking = true;
+              window.voiceState.speechStartTime = Date.now();
+              // Prepend 768ms FIFO pre-roll slices to prevent consonant clipping
+              for (var j = 0; j < window.voiceState.preRollBuffer.length; j++) {
+                window.voiceState.speechBuffer.push(window.voiceState.preRollBuffer[j]);
+              }
+            }
+            window.voiceState.speechBuffer.push(copy);
+            window.voiceState.silenceStartTime = 0;
+          } else {
+            if (window.voiceState.isSpeaking) {
+              window.voiceState.speechBuffer.push(copy);
+              if (window.voiceState.silenceStartTime === 0) {
+                window.voiceState.silenceStartTime = Date.now();
+              } else if (Date.now() - window.voiceState.silenceStartTime > 1200) {
+                // Natural pause detected -> dispatch speech segment
+                window.finalizeAndSendAudio();
+              }
+            } else {
+              // Rolling pre-roll FIFO buffer (keep 3 slices = ~768ms)
+              window.voiceState.preRollBuffer.push(copy);
+              if (window.voiceState.preRollBuffer.length > 3) {
+                window.voiceState.preRollBuffer.shift();
+              }
+            }
+          }
+        };
+
+        source.connect(processor);
+        processor.connect(audioCtx.destination);
+      })
+      .catch(function(err) {
+        window.showToast('Microphone access denied: ' + err.message);
+      });
+    };
+
+    window.finalizeAndSendAudio = function() {
+      var chunks = window.voiceState.speechBuffer;
+      if (!chunks || chunks.length === 0) {
+        window.voiceState.isSpeaking = false;
+        window.voiceState.speechBuffer = [];
+        return;
+      }
+
+      var wavBlob = encodeWavPcm16(chunks, 16000);
+      window.voiceState.speechBuffer = [];
+      window.voiceState.isSpeaking = false;
+      window.voiceState.silenceStartTime = 0;
+
+      window.updateVoiceUI(false, true); // Processing state
+
+      fetch('/api/transcribe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'audio/wav' },
+        body: wavBlob
+      })
+      .then(function(res) { return res.json(); })
+      .then(function(data) {
+        window.updateVoiceUI(window.voiceState.isListening);
+        if (data.ok && data.text) {
+          var promptInput = document.getElementById('taskPromptInput');
+          if (promptInput) {
+            var current = promptInput.value.trim();
+            promptInput.value = current ? (current + ' ' + data.text.trim()) : data.text.trim();
+            promptInput.focus();
+          }
+          window.showToast('🎙️ Heard: "' + data.text.trim() + '"');
+        } else if (data.error) {
+          window.showToast('Whisper: ' + data.error);
+        }
+      })
+      .catch(function(err) {
+        window.updateVoiceUI(window.voiceState.isListening);
+        window.showToast('Transcription error: ' + err.message);
+      });
+    };
+
+    window.stopVoiceListening = function(finalize) {
+      if (finalize && window.voiceState.isSpeaking) {
+        window.finalizeAndSendAudio();
+      }
+
+      window.voiceState.isListening = false;
+      if (window.voiceState.scriptProcessor) {
+        try { window.voiceState.scriptProcessor.disconnect(); } catch(e) {}
+        window.voiceState.scriptProcessor = null;
+      }
+      if (window.voiceState.sourceNode) {
+        try { window.voiceState.sourceNode.disconnect(); } catch(e) {}
+        window.voiceState.sourceNode = null;
+      }
+      if (window.voiceState.mediaStream) {
+        try {
+          window.voiceState.mediaStream.getTracks().forEach(function(t) { t.stop(); });
+        } catch(e) {}
+        window.voiceState.mediaStream = null;
+      }
+      if (window.voiceState.audioContext) {
+        try { window.voiceState.audioContext.close(); } catch(e) {}
+        window.voiceState.audioContext = null;
+      }
+
+      window.updateVoiceUI(false);
+    };
+
+    window.updateVoiceUI = function(isListening, isProcessing) {
+      var btn = document.getElementById('voiceMicBtn');
+      var icon = document.getElementById('voiceMicIcon');
+      var textarea = document.getElementById('taskPromptInput');
+
+      if (!btn || !icon) return;
+
+      if (isProcessing) {
+        icon.textContent = '⏳';
+        btn.className = 'w-9 h-9 rounded-full bg-amber-500/20 text-amber-500 border border-amber-500/30 flex items-center justify-center transition-all shadow-md cursor-wait relative z-30 animate-pulse';
+        btn.title = 'Transcribing with faster-whisper small.en...';
+        if (textarea) textarea.placeholder = 'Transcribing voice with offline Whisper small.en...';
+      } else if (isListening) {
+        icon.textContent = '🔴';
+        btn.className = 'w-9 h-9 rounded-full bg-rose-500/20 text-rose-500 border border-rose-500/50 flex items-center justify-center transition-all shadow-md cursor-pointer relative z-30 animate-pulse';
+        btn.title = 'Listening... tap again to stop';
+        if (textarea) textarea.placeholder = '🎙️ Listening... speak now (Offline Whisper small.en)';
+      } else {
+        icon.textContent = '🎙️';
+        btn.className = 'w-9 h-9 rounded-full bg-light-bg dark:bg-gpt-card hover:bg-emerald-500/15 text-light-muted dark:text-gpt-muted hover:text-emerald-500 border border-light-border dark:border-gpt-border flex items-center justify-center transition-all shadow-md cursor-pointer relative z-30';
+        btn.title = 'Tap to speak (Offline faster-whisper small.en)';
+        if (textarea) textarea.placeholder = 'Instruct the agent to search, navigate, or summarize...';
       }
     };
 
