@@ -644,15 +644,15 @@ export function getDashboardHtml(): string {
             <!-- Base URL -->
             <div class="space-y-1">
               <label class="block font-semibold text-light-muted dark:text-zinc-400">Base URL</label>
-              <input type="text" id="curProviderBaseUrl" onchange="window.saveProviderField('baseUrl', this.value)" class="w-full px-3.5 py-2 rounded-xl bg-light-card dark:bg-[#202024] border border-light-border dark:border-white/10 text-light-text dark:text-white font-mono text-xs focus:outline-none focus:border-emerald-500/60" placeholder="https://generativelanguage.googleapis.com/v1beta/openai">
+              <input type="text" id="curProviderBaseUrl" oninput="window.saveProviderField('baseUrl', this.value)" onchange="window.saveProviderField('baseUrl', this.value)" class="w-full px-3.5 py-2 rounded-xl bg-light-card dark:bg-[#202024] border border-light-border dark:border-white/10 text-light-text dark:text-white font-mono text-xs focus:outline-none focus:border-emerald-500/60" placeholder="http://localhost:8080">
             </div>
 
             <!-- API Format -->
             <div class="space-y-1">
               <label class="block font-semibold text-light-muted dark:text-zinc-400">API format</label>
               <select id="curProviderApiFormat" onchange="window.saveProviderField('apiFormat', this.value)" class="w-full px-3.5 py-2 rounded-xl bg-light-card dark:bg-[#202024] border border-light-border dark:border-white/10 text-light-text dark:text-white text-xs focus:outline-none focus:border-emerald-500/60">
-                <option value="openai">OpenAI compatible (/v1/chat/completions)</option>
                 <option value="anthropic">Anthropic messages (/v1/messages)</option>
+                <option value="openai">OpenAI compatible (/v1/chat/completions)</option>
                 <option value="gemini">Google Gemini Native</option>
               </select>
             </div>
@@ -661,7 +661,7 @@ export function getDashboardHtml(): string {
             <div class="space-y-1">
               <label class="block font-semibold text-light-muted dark:text-zinc-400">API key</label>
               <div class="relative">
-                <input type="password" id="curProviderApiKey" onchange="window.saveProviderField('apiKey', this.value)" placeholder="Enter API key..." class="w-full px-3.5 py-2 pr-10 rounded-xl bg-light-card dark:bg-[#202024] border border-light-border dark:border-white/10 text-light-text dark:text-white font-mono text-xs focus:outline-none focus:border-emerald-500/60">
+                <input type="password" id="curProviderApiKey" oninput="window.saveProviderField('apiKey', this.value)" onchange="window.saveProviderField('apiKey', this.value)" placeholder="Optional for local proxy (or sk-...)" class="w-full px-3.5 py-2 pr-10 rounded-xl bg-light-card dark:bg-[#202024] border border-light-border dark:border-white/10 text-light-text dark:text-white font-mono text-xs focus:outline-none focus:border-emerald-500/60">
                 <button type="button" onclick="window.toggleApiKeyVisibility()" class="absolute right-3 top-2 text-light-muted dark:text-zinc-400 hover:text-white cursor-pointer" title="Toggle visibility">👁️</button>
               </div>
             </div>
@@ -846,14 +846,14 @@ export function getDashboardHtml(): string {
         id: 'gemini',
         name: 'Gemini',
         enabled: true,
-        baseUrl: 'https://generativelanguage.googleapis.com/v1beta/openai',
-        apiFormat: 'openai',
+        baseUrl: 'http://localhost:8080',
+        apiFormat: 'anthropic',
         apiKey: '',
         models: [
+          { id: 'gemini-3.8-flash-tiered[1m]', tags: ['Vision', 'Active'] },
           { id: 'gemini-3.7-flash-tiered[1m]', tags: ['Vision', '1M'] },
           { id: 'gemini-3.1-pro-high[1m]', tags: ['Vision', '1M'] },
-          { id: 'claude-sonnet-4-6', tags: ['1M'] },
-          { id: 'gemini-3.8-flash-tiered[1m]', tags: ['Vision', '1M'] }
+          { id: 'claude-sonnet-4-6', tags: ['1M'] }
         ]
       },
       {
@@ -1032,6 +1032,14 @@ export function getDashboardHtml(): string {
     window.switchModel = function(modelId, modelName, providerId) {
       window.state.selectedModel = modelId;
       window.state.selectedModelName = modelName || modelId;
+
+      if (providerId) {
+        window.state.selectedProviderId = providerId;
+        localStorage.setItem('browser_agent_selected_provider', providerId);
+      } else if (window.currentSelectedProviderId) {
+        window.state.selectedProviderId = window.currentSelectedProviderId;
+        localStorage.setItem('browser_agent_selected_provider', window.currentSelectedProviderId);
+      }
 
       var cleanName = (modelName || modelId).split('/')[1]?.split(':')[0] || (modelName || modelId);
       var curText = document.getElementById('currentModelText');
@@ -2396,10 +2404,18 @@ export function getDashboardHtml(): string {
       promptInput.style.height = 'auto';
 
       var providers = window.getSavedProviders();
-      var activeModel = window.state.selectedModel || prefs.model;
-      var activeProvider = providers.find(function(p) {
-        return (p.models || []).some(function(m) { return m.id === activeModel; });
-      }) || providers[0];
+      var activeModel = window.state.selectedModel || prefs.model || 'gemini-3.8-flash-tiered[1m]';
+      var savedProvId = window.state.selectedProviderId || localStorage.getItem('browser_agent_selected_provider');
+      var activeProvider = (savedProvId ? providers.find(function(p) { return p.id === savedProvId; }) : null) ||
+        providers.find(function(p) {
+          return (p.models || []).some(function(m) { return m.id === activeModel; });
+        }) || providers[0];
+
+      var activeBaseUrl = (activeProvider && activeProvider.baseUrl && activeProvider.baseUrl.trim()) ? activeProvider.baseUrl.trim() : undefined;
+      var activeApiFormat = activeProvider ? (activeProvider.apiFormat || 'openai') : 'openai';
+      var activeApiKey = (activeProvider && activeProvider.apiKey && activeProvider.apiKey.trim())
+        ? activeProvider.apiKey.trim()
+        : ((prefs.apiKey && prefs.apiKey.trim()) ? prefs.apiKey.trim() : undefined);
 
       fetch('/api/run', {
         method: 'POST',
@@ -2410,8 +2426,9 @@ export function getDashboardHtml(): string {
           model: activeModel,
           headless: prefs.headless !== undefined ? prefs.headless : true,
           slowMo: prefs.slowMo !== undefined ? parseInt(prefs.slowMo, 10) : 50,
-          apiKey: (activeProvider && activeProvider.apiKey && activeProvider.apiKey.trim()) ? activeProvider.apiKey.trim() : ((prefs.apiKey && prefs.apiKey.trim()) ? prefs.apiKey.trim() : undefined),
-          baseUrl: (activeProvider && activeProvider.apiKey && activeProvider.apiKey.trim()) ? activeProvider.baseUrl : undefined
+          apiKey: activeApiKey,
+          baseUrl: activeBaseUrl,
+          apiFormat: activeApiFormat
         })
       })
       .then(function(res) { return res.json(); })

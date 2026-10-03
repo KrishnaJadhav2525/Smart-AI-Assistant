@@ -5,6 +5,7 @@ export interface OpenRouterConfig {
   apiKey?: string;
   model?: string;
   baseURL?: string;
+  apiFormat?: 'openai' | 'anthropic' | 'gemini';
   temperature?: number;
   maxRetries?: number;
   mockHandler?: (prompt: string, history: string[]) => Promise<{ toolName: string; args: any; thought?: string }>;
@@ -85,13 +86,21 @@ const MODEL_ALIASES: Record<string, string> = {
   'anthropic/claude-3.5-sonnet': 'anthropic/claude-sonnet-4',
 };
 
-function resolveModelName(name: string): string {
-  return MODEL_ALIASES[name] || name;
+function cleanModelName(name: string, isCustomEndpoint: boolean = false): string {
+  // Strip UI tag annotations like [1m], [Vision], etc.
+  const stripped = name.replace(/\[.*?\]/g, '').trim();
+  if (isCustomEndpoint) {
+    return stripped;
+  }
+  return MODEL_ALIASES[stripped] || MODEL_ALIASES[name] || stripped;
 }
 
 export class OpenRouterClient {
   private client: OpenAI | null = null;
   private model: string;
+  private baseURL?: string;
+  private apiFormat: 'openai' | 'anthropic' | 'gemini';
+  private apiKey?: string;
   private temperature: number;
   private maxRetries: number;
   private fallbackModels: string[];
@@ -99,7 +108,10 @@ export class OpenRouterClient {
 
   constructor(config: OpenRouterConfig = {}) {
     const rawModel = config.model || process.env.OPENROUTER_MODEL || 'deepseek/deepseek-v4-flash-0731:free';
-    this.model = resolveModelName(rawModel);
+    this.baseURL = config.baseURL || process.env.OPENROUTER_BASE_URL;
+    const isCustom = Boolean(this.baseURL && !this.baseURL.includes('openrouter.ai'));
+    this.model = cleanModelName(rawModel, isCustom);
+    this.apiFormat = config.apiFormat || (this.baseURL?.includes('8080') ? 'anthropic' : 'openai');
     this.temperature = config.temperature ?? 0.1;
     this.maxRetries = config.maxRetries ?? 3;
     this.mockHandler = config.mockHandler;
@@ -114,11 +126,11 @@ export class OpenRouterClient {
       'nvidia/nemotron-3.5-lightning:free',
     ].filter((m) => m !== this.model);
 
-    const apiKey = config.apiKey || process.env.OPENROUTER_API_KEY;
-    if (apiKey) {
+    this.apiKey = config.apiKey || process.env.OPENROUTER_API_KEY;
+    if (this.apiKey && this.apiFormat === 'openai') {
       this.client = new OpenAI({
-        baseURL: config.baseURL || process.env.OPENROUTER_BASE_URL || 'https://openrouter.ai/api/v1',
-        apiKey,
+        baseURL: this.baseURL || 'https://openrouter.ai/api/v1',
+        apiKey: this.apiKey,
         defaultHeaders: {
           'HTTP-Referer': 'https://github.com/krishna/browser-agent',
           'X-Title': 'BrowserAgent',
@@ -127,8 +139,20 @@ export class OpenRouterClient {
     }
   }
 
+  public getModel(): string {
+    return this.model;
+  }
+
+  public getApiFormat(): string {
+    return this.apiFormat;
+  }
+
+  public getBaseURL(): string | undefined {
+    return this.baseURL;
+  }
+
   public hasApiKey(): boolean {
-    return !!this.client || !!this.mockHandler;
+    return !!this.client || !!this.mockHandler || (this.apiFormat === 'anthropic' && !!this.baseURL);
   }
 
   public setMockHandler(
@@ -182,6 +206,131 @@ export class OpenRouterClient {
   }
 
   /**
+   * Dispatches request via Anthropic /v1/messages protocol (supports local Antigravity proxy).
+   */
+  private async predictNextActionAnthropic(
+    systemPrompt: string,
+    userPrompt: string,
+    _history: string[] = []
+  ): Promise<NextActionResponse> {
+    const rawBase = (this.baseURL || 'http://localhost:8080').replace(/\/+$/, '');
+    const endpoint = rawBase.endsWith('/messages')
+      ? rawBase
+      : rawBase.endsWith('/v1')
+        ? `${rawBase}/messages`
+        : `${rawBase}/v1/messages`;
+
+    // Map OpenAI function schemas to Anthropic tools
+    const anthropicTools = ToolSchemas.map((t) => ({
+      name: t.function.name,
+      description: t.function.description,
+      input_schema: t.function.parameters,
+    }));
+
+    let attempt = 0;
+    let lastError: any = null;
+
+    while (attempt < this.maxRetries) {
+      attempt += 1;
+      try {
+        const payload: any = {
+          model: this.model,
+          max_tokens: 4096,
+          temperature: this.temperature,
+          system: systemPrompt,
+          messages: [{ role: 'user', content: userPrompt }],
+          tools: anthropicTools,
+        };
+
+        const headers: Record<string, string> = {
+          'Content-Type': 'application/json',
+          'anthropic-version': '2023-06-01',
+        };
+        if (this.apiKey) {
+          headers['x-api-key'] = this.apiKey;
+          headers['Authorization'] = `Bearer ${this.apiKey}`;
+        }
+
+        const res = await fetch(endpoint, {
+          method: 'POST',
+          headers,
+          body: JSON.stringify(payload),
+        });
+
+        if (!res.ok) {
+          const errText = await res.text().catch(() => '');
+          throw new Error(`Anthropic endpoint error (${res.status}): ${errText}`);
+        }
+
+        const data: any = await res.json();
+        const contentArray = Array.isArray(data.content) ? data.content : [];
+
+        // 1. Check for tool_use blocks
+        const toolUseBlock = contentArray.find((b: any) => b.type === 'tool_use');
+        const textBlocks = contentArray
+          .filter((b: any) => b.type === 'text')
+          .map((b: any) => b.text || '')
+          .join('\n');
+        const thinkingBlocks = contentArray
+          .filter((b: any) => b.type === 'thinking')
+          .map((b: any) => b.thinking || '')
+          .join('\n');
+
+        const thought = thinkingBlocks || textBlocks || undefined;
+
+        if (toolUseBlock) {
+          return {
+            toolName: toolUseBlock.name,
+            args: toolUseBlock.input || {},
+            thought,
+            usage: {
+              promptTokens: data.usage?.input_tokens,
+              completionTokens: data.usage?.output_tokens,
+              totalTokens: (data.usage?.input_tokens || 0) + (data.usage?.output_tokens || 0),
+            },
+          };
+        }
+
+        // 2. Check for tool call JSON embedded in text
+        if (textBlocks) {
+          const extracted = this.extractToolFromText(textBlocks);
+          if (extracted) {
+            return {
+              toolName: extracted.toolName,
+              args: extracted.args,
+              thought: extracted.thought || thought,
+              usage: {
+                promptTokens: data.usage?.input_tokens,
+                completionTokens: data.usage?.output_tokens,
+                totalTokens: (data.usage?.input_tokens || 0) + (data.usage?.output_tokens || 0),
+              },
+            };
+          }
+
+          return {
+            toolName: 'browser_done',
+            args: {
+              summary: 'Completed with text response',
+              finalAnswer: textBlocks,
+            },
+            thought,
+          };
+        }
+
+        throw new Error('Anthropic endpoint returned neither tool_use nor text content.');
+      } catch (err: any) {
+        lastError = err;
+        if (attempt < this.maxRetries) {
+          const backoff = Math.pow(2, attempt) * 1000;
+          await new Promise((resolve) => setTimeout(resolve, backoff));
+        }
+      }
+    }
+
+    throw new Error(`Anthropic request failed after ${this.maxRetries} attempts: ${lastError?.message || lastError}`);
+  }
+
+  /**
    * Sends snapshot and context to OpenRouter and parses the selected tool call.
    */
   public async predictNextAction(
@@ -196,6 +345,10 @@ export class OpenRouterClient {
         args: mockResult.args,
         thought: mockResult.thought || 'Mock reasoning',
       };
+    }
+
+    if (this.apiFormat === 'anthropic') {
+      return this.predictNextActionAnthropic(systemPrompt, userPrompt, history);
     }
 
     if (!this.client) {
@@ -352,6 +505,9 @@ export class OpenRouterClient {
     else if (g.includes('explorer')) appName = 'explorer';
     else if (g.includes('terminal') || g.includes('cmd') || g.includes('powershell')) appName = 'terminal';
 
+    const isSearchGoogle = /\b(?:search|browse|look up)\s+(?:on\s+)?(?:google|the web|online|internet)\b/i.test(goal);
+    const suggestedTargetUrl = urlInGoal || (isSearchGoogle ? 'https://www.google.com' : undefined);
+
     const defaultResult: PromptAnalysisResult = isLocal
       ? isAppLaunch
         ? {
@@ -377,17 +533,91 @@ export class OpenRouterClient {
           }
       : {
           understanding: `Task goal: ${goal}`,
-          parameters: { prompt: goal, url: urlInGoal || 'https://www.google.com' },
+          parameters: { prompt: goal, ...(suggestedTargetUrl ? { url: suggestedTargetUrl } : {}) },
           strategy: [
-            `Navigate to ${urlInGoal || 'target web service or search engine'}`,
-            `Inspect page accessibility snapshot and interact with elements`,
-            `Fill form fields or extract required data`,
+            ...(suggestedTargetUrl ? [`Navigate to ${suggestedTargetUrl}`] : []),
+            `Evaluate task instructions and choose best tools`,
+            `Perform necessary actions or queries`,
             `Submit or conclude task and present final answer`
           ],
-          suggestedUrl: urlInGoal || 'https://www.google.com'
+          suggestedUrl: suggestedTargetUrl
         };
 
-    if (!this.client || this.mockHandler) {
+    if (this.mockHandler || (!this.client && this.apiFormat !== 'anthropic')) {
+      return defaultResult;
+    }
+
+    if (this.apiFormat === 'anthropic') {
+      try {
+        const rawBase = (this.baseURL || 'http://localhost:8080').replace(/\/+$/, '');
+        const endpoint = rawBase.endsWith('/messages')
+          ? rawBase
+          : rawBase.endsWith('/v1')
+            ? `${rawBase}/messages`
+            : `${rawBase}/v1/messages`;
+
+        const res = await fetch(endpoint, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'anthropic-version': '2023-06-01',
+            ...(this.apiKey ? { 'x-api-key': this.apiKey, Authorization: `Bearer ${this.apiKey}` } : {}),
+          },
+          body: JSON.stringify({
+            model: this.model,
+            max_tokens: 2048,
+            temperature: 0.2,
+            messages: [
+              {
+                role: 'user',
+                content: `You are an AI task planner. Analyze the user's prompt and output JSON.
+If the prompt contains a specific URL, set "suggestedUrl" to that exact URL.
+If the prompt is for local desktop or filesystem tasks (organizing files, drives like D:, folders, notes, local apps):
+- Set "suggestedUrl" to null.
+- Formulate a 3-4 step strategy using local filesystem tools.
+If the prompt explicitly requires web search or web navigation:
+- Set "suggestedUrl" to the relevant URL.
+Otherwise, set "suggestedUrl" to null.
+
+Return ONLY valid JSON matching this schema:
+{
+  "understanding": "...",
+  "parameters": {"key": "val"},
+  "strategy": ["step 1", "step 2"],
+  "suggestedUrl": "https://..." or null
+}
+
+PROMPT: ${goal}`
+              }
+            ]
+          })
+        });
+
+        if (res.ok) {
+          const data: any = await res.json();
+          const textBlock = (data.content || []).find((b: any) => b.type === 'text');
+          if (textBlock?.text) {
+            const rawContent = textBlock.text.trim();
+            const jsonMatch = rawContent.match(/\{[\s\S]*\}/);
+            if (jsonMatch) {
+              const parsed = JSON.parse(jsonMatch[0]);
+              let finalUrl = isLocal ? undefined : (urlInGoal || (parsed.suggestedUrl && parsed.suggestedUrl !== 'null' ? parsed.suggestedUrl : undefined));
+              return {
+                understanding: parsed.understanding || defaultResult.understanding,
+                parameters: parsed.parameters || defaultResult.parameters,
+                strategy: Array.isArray(parsed.strategy) && parsed.strategy.length > 0 ? parsed.strategy : defaultResult.strategy,
+                suggestedUrl: finalUrl
+              };
+            }
+          }
+        }
+      } catch {
+        // Fallback on error
+      }
+      return defaultResult;
+    }
+
+    if (!this.client) {
       return defaultResult;
     }
 
@@ -441,9 +671,5 @@ Return ONLY valid JSON matching this schema:
     }
 
     return defaultResult;
-  }
-
-public getModel(): string {
-    return this.model;
   }
 }

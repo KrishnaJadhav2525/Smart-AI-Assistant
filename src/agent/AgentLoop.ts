@@ -182,8 +182,10 @@ export class AgentLoop {
     // A task is ONLY a local task if NO web URL is provided AND goal is purely local files/desktop
     const isLocalTask = !options.initialUrl && !urlInGoal && isLocalOrDesktopTask(options.goal);
 
-    // Determine target URL for web browsing
-    const targetUrl = options.initialUrl || urlInGoal || (!isLocalTask ? (promptAnalysis.suggestedUrl || 'https://www.google.com') : undefined);
+    // Determine target URL for web browsing:
+    // Only navigate initially if an explicit URL was provided (via options or embedded in goal),
+    // or if the prompt analysis explicitly determined a starting URL (e.g. search query or specific site).
+    const targetUrl = options.initialUrl || urlInGoal || promptAnalysis.suggestedUrl;
 
     if (targetUrl) {
       const navResult = await executor.navigate(targetUrl);

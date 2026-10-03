@@ -331,8 +331,10 @@ export function startDashboardServer(options: ServerOptions = {}): http.Server {
           const headless = params.headless !== undefined ? params.headless : (process.env.HEADLESS === 'false' ? false : true);
           const maxSteps = params.maxSteps ? parseInt(params.maxSteps, 10) : 25;
 
-          const apiKey = params.apiKey || process.env.OPENROUTER_API_KEY;
-          if (!apiKey) {
+          const baseUrl = params.baseUrl || process.env.OPENROUTER_BASE_URL;
+          const apiFormat = params.apiFormat || (baseUrl?.includes('8080') ? 'anthropic' : 'openai');
+          const apiKey = params.apiKey || process.env.OPENROUTER_API_KEY || (baseUrl ? 'sk-proxy-local-token' : undefined);
+          if (!apiKey && apiFormat !== 'anthropic') {
             res.writeHead(400, { 'Content-Type': 'application/json' });
             res.end(JSON.stringify({ error: 'OPENROUTER_API_KEY is not configured.' }));
             return;
@@ -377,11 +379,11 @@ export function startDashboardServer(options: ServerOptions = {}): http.Server {
           activeBrowserManager = browserManager;
           startLiveCapture();
 
-          const baseUrl = params.baseUrl || process.env.OPENROUTER_BASE_URL;
           const openRouterClient = new OpenRouterClient({
             apiKey,
             model,
             baseURL: baseUrl,
+            apiFormat,
           });
 
           const agent = new AgentLoop(browserManager, openRouterClient, securityPolicy);
