@@ -2,6 +2,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { spawn } from 'node:child_process';
 import type { ExecutionResult } from '../browser/ActionExecutor.js';
+import { SmartOrganizer } from './organizer/SmartOrganizer.js';
 
 export interface DesktopNoteOptions {
   title: string;
@@ -11,12 +12,14 @@ export interface DesktopNoteOptions {
 
 export class DesktopExecutor {
   private outputDir: string;
+  private smartOrganizer: SmartOrganizer;
 
   constructor() {
     this.outputDir = path.resolve(process.cwd(), 'data', 'outputs');
     if (!fs.existsSync(this.outputDir)) {
       fs.mkdirSync(this.outputDir, { recursive: true });
     }
+    this.smartOrganizer = new SmartOrganizer();
   }
 
   /**
@@ -61,7 +64,16 @@ export class DesktopExecutor {
         return await this.listDirectory(args.dirPath, args.maxItems);
 
       case 'file_organize_directory':
-        return await this.organizeDirectory(args.dirPath);
+        return await this.organizeDirectory(args.dirPath, args.mode || (args.smart ? 'smart' : 'extension'));
+
+      case 'file_organize_smart':
+        return await this.organizeSmart(args.dirPath, args.dryRun === true);
+
+      case 'file_rename_folder_by_content':
+        return await this.renameFolderByContent(args.folderPath);
+
+      case 'file_undo_organize':
+        return await this.undoOrganize(args.manifestPath);
 
       case 'file_move':
         return await this.moveFile(args.sourcePath, args.destinationPath);
@@ -170,9 +182,15 @@ export class DesktopExecutor {
   }
 
   /**
-   * Organizes loose files in a directory or local drive by file type into clean category folders.
+   * Organizes loose files in a directory or local drive by file type or semantic content into clean folders.
    */
-  public async organizeDirectory(rawPath?: string): Promise<ExecutionResult> {
+  public async organizeDirectory(
+    rawPath?: string,
+    mode: 'extension' | 'smart' = 'extension'
+  ): Promise<ExecutionResult> {
+    if (mode === 'smart') {
+      return await this.organizeSmart(rawPath);
+    }
     const targetDir = this.normalizePath(rawPath);
 
     if (!fs.existsSync(targetDir)) {
@@ -264,6 +282,114 @@ export class DesktopExecutor {
         action: 'file_organize_directory',
         output: '',
         error: `Failed to organize directory "${targetDir}": ${err?.message || err}`,
+      };
+    }
+  }
+
+  /**
+   * Semantically organizes files by inspecting inner content (excerpts, topics, dates) and clustering into smart folders.
+   */
+  public async organizeSmart(rawPath?: string, dryRun: boolean = false): Promise<ExecutionResult> {
+    const targetDir = this.normalizePath(rawPath);
+    try {
+      const result = await this.smartOrganizer.organizeDirectoryByContent(targetDir, { dryRun });
+      const summary = [
+        `Content-Aware Smart Organization completed for: ${result.targetDirectory}`,
+        `Total Files Scanned: ${result.totalFilesScanned}`,
+        `Files Categorized & Moved: ${result.filesMoved}`,
+        `Semantic Topic Folders Created (${result.categoriesCreated.length}):`,
+        ...result.categoriesCreated.map((c) => `  - ${c}`),
+        result.manifestPath ? `Transactional Undo Manifest saved to: ${result.manifestPath}` : '',
+      ].filter(Boolean).join('\n');
+
+      return {
+        ok: true,
+        action: 'file_organize_smart',
+        output: summary,
+        verification: {
+          verified: true,
+          reason: `Organized ${result.filesMoved} files semantically into ${result.categoriesCreated.length} topic folders.`,
+        },
+      };
+    } catch (err: any) {
+      return {
+        ok: false,
+        action: 'file_organize_smart',
+        output: '',
+        error: `Failed content-aware file organization: ${err?.message || err}`,
+      };
+    }
+  }
+
+  /**
+   * Inspects files inside a folder, identifies the dominant content/topic theme, and renames the folder accordingly.
+   */
+  public async renameFolderByContent(rawPath: string): Promise<ExecutionResult> {
+    if (!rawPath) {
+      return {
+        ok: false,
+        action: 'file_rename_folder_by_content',
+        output: '',
+        error: 'Target folder path is required.',
+      };
+    }
+
+    const targetFolder = this.normalizePath(rawPath);
+    try {
+      const result = await this.smartOrganizer.renameFolderByContent(targetFolder);
+      return {
+        ok: true,
+        action: 'file_rename_folder_by_content',
+        output: `Successfully renamed folder based on its contents:\n` +
+          `  Original Name: "${result.originalName}" (${result.originalPath})\n` +
+          `  New Name:      "${result.suggestedName}" (${result.newPath})\n` +
+          `  Dominant Topic: ${result.dominantTopic} (Confidence: ${result.confidence}% across ${result.fileCount} files)`,
+        verification: {
+          verified: true,
+          reason: `Folder renamed to "${result.suggestedName}" based on dominant topic "${result.dominantTopic}".`,
+        },
+      };
+    } catch (err: any) {
+      return {
+        ok: false,
+        action: 'file_rename_folder_by_content',
+        output: '',
+        error: `Failed to rename folder by content: ${err?.message || err}`,
+      };
+    }
+  }
+
+  /**
+   * Rolls back an organization session using its transactional undo manifest.
+   */
+  public async undoOrganize(manifestPath: string): Promise<ExecutionResult> {
+    if (!manifestPath) {
+      return {
+        ok: false,
+        action: 'file_undo_organize',
+        output: '',
+        error: 'Manifest file path is required to undo file organization.',
+      };
+    }
+
+    const resolved = this.normalizePath(manifestPath);
+    try {
+      const result = await this.smartOrganizer.undoOrganize(resolved);
+      return {
+        ok: true,
+        action: 'file_undo_organize',
+        output: `Successfully rolled back organization session. Restored ${result.restoredCount} files to their original locations.`,
+        verification: {
+          verified: true,
+          reason: `Restored ${result.restoredCount} files via manifest "${resolved}".`,
+        },
+      };
+    } catch (err: any) {
+      return {
+        ok: false,
+        action: 'file_undo_organize',
+        output: '',
+        error: `Failed to undo file organization: ${err?.message || err}`,
       };
     }
   }

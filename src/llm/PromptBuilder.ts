@@ -18,6 +18,9 @@ TOOLS (use exactly one per turn):
 - browser_snapshot: {}
 - file_list_directory: {"dirPath":"D:\\"}
 - file_organize_directory: {"dirPath":"D:\\"}
+- file_organize_smart: {"dirPath":"D:\\"}
+- file_rename_folder_by_content: {"folderPath":"D:\\MyDocs"}
+- file_undo_organize: {"manifestPath":"..."}
 - file_move: {"sourcePath":"...","destinationPath":"..."}
 - file_create_directory: {"dirPath":"..."}
 - file_read: {"filePath":"..."}
@@ -30,7 +33,7 @@ RULES:
 1. In the "thought" property, ALWAYS explain your intent: state what you learned from the prompt and why this step helps fulfill the goal.
 2. Use refs ONLY from the CURRENT snapshot version. Stale refs fail.
 3. If an action fails, adapt — don't repeat it. Try alternative paths.
-4. When asked to inspect, list, or organize files on a local drive or folder (such as D: drive or a directory), use file_list_directory and file_organize_directory to ACTUALLY inspect and organize real files into category folders on disk. Do NOT use desktop_write_note to simulate file organizing.
+4. When asked to inspect, list, organize files, or rename folders based on content (e.g. on D: drive or a directory), use file_list_directory, file_organize_smart, file_organize_directory, or file_rename_folder_by_content to ACTUALLY inspect files, organize them into semantic topic folders on disk, or rename folders to match the dominant content inside them. Do NOT use desktop_write_note to simulate file organizing.
 5. Use desktop_write_note ONLY when the user asks to save notes or summaries. Set openInNotepad: true ONLY if the user explicitly asked to open Notepad.
 6. When the goal is achieved or final information is extracted, call browser_done IMMEDIATELY.
 7. Provide a clear, detailed finalAnswer with full results.

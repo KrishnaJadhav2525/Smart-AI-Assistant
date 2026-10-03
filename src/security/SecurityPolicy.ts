@@ -186,9 +186,26 @@ export class SecurityPolicy {
       }
     }
 
-    if (toolName === 'file_move' || toolName === 'file_organize_directory') {
-      const target = String(args.dirPath || args.destinationPath || args.sourcePath || '').toLowerCase();
-      if (target.includes('c:\\windows') || target.includes('system volume information') || target.includes('$recycle.bin')) {
+    if (
+      toolName === 'file_move' ||
+      toolName === 'file_organize_directory' ||
+      toolName === 'file_organize_smart' ||
+      toolName === 'file_rename_folder_by_content' ||
+      toolName === 'file_undo_organize'
+    ) {
+      const target = String(
+        args.dirPath ||
+        args.destinationPath ||
+        args.sourcePath ||
+        args.folderPath ||
+        args.manifestPath ||
+        ''
+      ).toLowerCase();
+      if (
+        target.includes('c:\\windows') ||
+        target.includes('system volume information') ||
+        target.includes('$recycle.bin')
+      ) {
         return {
           risk: 'HIGH',
           reason: `Attempt to modify protected operating system directory: "${target}"`,

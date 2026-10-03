@@ -85,6 +85,9 @@ export class ActionExecutor {
         case 'file_read':
         case 'file_list_directory':
         case 'file_organize_directory':
+        case 'file_organize_smart':
+        case 'file_rename_folder_by_content':
+        case 'file_undo_organize':
         case 'file_move':
         case 'file_create_directory':
           return await this.desktopExecutor.execute(toolName, args);

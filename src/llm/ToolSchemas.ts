@@ -316,6 +316,61 @@ export const ToolSchemas = [
   {
     type: 'function' as const,
     function: {
+      name: 'file_organize_smart',
+      description: 'Semantically organizes files in a directory or local drive by inspecting inside file contents (text, PDFs, CSVs, documents) and clustering into smart topical folders (e.g., AWS_Invoices, Tax_and_Compliance, Resumes_and_Careers, Healthcare_and_Research, Contracts_and_Legal) rather than merely grouping by extension. Generates an undo manifest.',
+      parameters: {
+        type: 'object',
+        properties: {
+          dirPath: {
+            type: 'string',
+            description: 'Target directory or drive path to organize semantically by content.',
+          },
+          dryRun: {
+            type: 'boolean',
+            description: 'If true, simulates organization without moving files.',
+          },
+        },
+        required: ['dirPath'],
+      },
+    },
+  },
+  {
+    type: 'function' as const,
+    function: {
+      name: 'file_rename_folder_by_content',
+      description: 'Inspects all documents and files inside a folder, determines the dominant content/topic consensus (e.g. AWS Invoices, Clinical Research, Tax Documents), and renames the folder on disk to accurately reflect what is stored inside.',
+      parameters: {
+        type: 'object',
+        properties: {
+          folderPath: {
+            type: 'string',
+            description: 'Target folder path to inspect and rename based on content.',
+          },
+        },
+        required: ['folderPath'],
+      },
+    },
+  },
+  {
+    type: 'function' as const,
+    function: {
+      name: 'file_undo_organize',
+      description: 'Safely reverses a previously executed file organization operation by reading its transactional undo manifest and moving all files back to their exact original locations.',
+      parameters: {
+        type: 'object',
+        properties: {
+          manifestPath: {
+            type: 'string',
+            description: 'Path to the organizer-manifest JSON file.',
+          },
+        },
+        required: ['manifestPath'],
+      },
+    },
+  },
+  {
+    type: 'function' as const,
+    function: {
       name: 'file_move',
       description: 'Moves or renames a file or directory from sourcePath to destinationPath.',
       parameters: {
