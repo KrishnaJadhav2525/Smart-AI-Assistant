@@ -4,9 +4,42 @@ import { ToolSchemas } from './ToolSchemas.js';
 export interface OpenRouterConfig {
   apiKey?: string;
   model?: string;
+  baseURL?: string;
   temperature?: number;
   maxRetries?: number;
   mockHandler?: (prompt: string, history: string[]) => Promise<{ toolName: string; args: any; thought?: string }>;
+}
+
+export function isLocalOrDesktopTask(goal: string): boolean {
+  if (!goal) return false;
+  const g = goal.toLowerCase();
+
+  // Strip local path segments so folder names (like "browser-agent") do not false-trigger web keywords
+  const cleanGoal = g.replace(/[a-z]:[\\/][^\s]+/gi, ' ').replace(/\/[^\s]+/g, ' ');
+
+  const webPatterns = [
+    /\bhttps?:\/\//i,
+    /\bwww\./i,
+    /\b(?:google|wikipedia|hackernews|hacker news)\b/i,
+    /\b(?:website|webpage|web page|search the web|online portal)\b/i,
+    /\bbrowse\s+(?:to|the|website|internet|online|page)\b/i,
+    /\b(?:navigate|open)\s+https?:\/\//i,
+  ];
+
+  if (webPatterns.some((pattern) => pattern.test(cleanGoal))) {
+    return false;
+  }
+
+  const localPatterns = [
+    /\b(?:drive\s+[a-z]|[a-z]:\\|[a-z]:\/)\b/i,
+    /\b(?:organize|organise|orgnize|cleanup|clean up|sort)\b/i,
+    /\b(?:rename|move|copy|delete|list)\b.*(?:folder|folders|file|files|dir|directory)\b/i,
+    /\b(?:folder|folders|directory|directories|files?)\b/i,
+    /\b(?:desktop|notepad|calculator|calc|explorer)\b/i,
+    /\b(?:write note|take note|save note)\b/i,
+  ];
+
+  return localPatterns.some((pattern) => pattern.test(g));
 }
 
 
@@ -79,7 +112,7 @@ export class OpenRouterClient {
     const apiKey = config.apiKey || process.env.OPENROUTER_API_KEY;
     if (apiKey) {
       this.client = new OpenAI({
-        baseURL: 'https://openrouter.ai/api/v1',
+        baseURL: config.baseURL || process.env.OPENROUTER_BASE_URL || 'https://openrouter.ai/api/v1',
         apiKey,
         defaultHeaders: {
           'HTTP-Referer': 'https://github.com/krishna/browser-agent',
@@ -290,17 +323,37 @@ export class OpenRouterClient {
 
   
   public async analyzePrompt(goal: string): Promise<PromptAnalysisResult> {
-    const defaultResult: PromptAnalysisResult = {
-      understanding: `Task goal: ${goal}`,
-      parameters: { prompt: goal },
-      strategy: [
-        `Analyze requirement for "${goal}"`,
-        `Navigate to target web service or search engine`,
-        `Search, extract, and interact with page elements`,
-        `Compile results and present final answer`
-      ],
-      suggestedUrl: 'https://www.google.com'
-    };
+    const isLocal = isLocalOrDesktopTask(goal);
+    let extractedPath = 'D:\\';
+    const driveMatch = goal.match(/\b(?:drive\s+([a-zA-Z])|([a-zA-Z]):[\\/]?)/i);
+    if (driveMatch) {
+      const letter = (driveMatch[1] || driveMatch[2]).toUpperCase();
+      extractedPath = `${letter}:\\`;
+    }
+
+    const defaultResult: PromptAnalysisResult = isLocal
+      ? {
+          understanding: `Local computer & file operations: ${goal}`,
+          parameters: { targetPath: extractedPath, operation: 'file_organize_smart' },
+          strategy: [
+            `Identify target directory or drive (${extractedPath})`,
+            `Inspect existing folders and scan file contents semantically`,
+            `Execute content-aware file organization or folder renaming on disk`,
+            `Verify disk structure changes and report completed summary`
+          ],
+          suggestedUrl: undefined
+        }
+      : {
+          understanding: `Task goal: ${goal}`,
+          parameters: { prompt: goal },
+          strategy: [
+            `Analyze requirement for "${goal}"`,
+            `Navigate to target web service or search engine`,
+            `Search, extract, and interact with page elements`,
+            `Compile results and present final answer`
+          ],
+          suggestedUrl: 'https://www.google.com'
+        };
 
     if (!this.client || this.mockHandler) {
       return defaultResult;
@@ -313,18 +366,19 @@ export class OpenRouterClient {
         messages: [
           {
             role: 'system',
-            content: `You are an AI task planner. Analyze the user's web automation prompt and output JSON with:
-1. "understanding": Concise summary of core task intent & goal.
-2. "parameters": Key entities extracted (e.g. origin, destination, date, query, topic).
-3. "strategy": Array of 3-5 clear sequential step descriptions to complete the task.
-4. "suggestedUrl": Optional starting website URL (e.g. "https://www.google.com" or relevant portal).
+            content: `You are an AI task planner. Analyze the user's prompt and output JSON.
+If the prompt is for local desktop or filesystem tasks (organizing files, drives like D:, folders, notes, local apps):
+- Set "suggestedUrl" to null.
+- Formulate a 3-4 step strategy using local filesystem tools (inspecting content, smart categorization, renaming folders).
+If the prompt requires web navigation:
+- Suggest a relevant web URL and web navigation steps.
 
 Return ONLY valid JSON matching this schema:
 {
   "understanding": "...",
   "parameters": {"key": "val"},
   "strategy": ["step 1", "step 2"],
-  "suggestedUrl": "https://..."
+  "suggestedUrl": "https://..." or null
 }`
           },
           {
@@ -338,11 +392,15 @@ Return ONLY valid JSON matching this schema:
       const match = content.match(/\{[\s\S]*\}/);
       if (match) {
         const parsed = JSON.parse(match[0]);
+        let suggestedUrl = parsed.suggestedUrl || defaultResult.suggestedUrl;
+        if (isLocal) {
+          suggestedUrl = undefined;
+        }
         return {
           understanding: parsed.understanding || defaultResult.understanding,
           parameters: parsed.parameters || defaultResult.parameters,
           strategy: Array.isArray(parsed.strategy) && parsed.strategy.length > 0 ? parsed.strategy : defaultResult.strategy,
-          suggestedUrl: parsed.suggestedUrl || defaultResult.suggestedUrl
+          suggestedUrl
         };
       }
     } catch {

@@ -193,6 +193,15 @@ export class DesktopExecutor {
     }
     const targetDir = this.normalizePath(rawPath);
 
+    if (path.resolve(targetDir) === path.resolve(process.cwd())) {
+      return {
+        ok: false,
+        action: 'file_organize_directory',
+        output: '',
+        error: 'Refusing to organize application repository root directory. Target a subfolder or external drive (e.g. "D:\\").',
+      };
+    }
+
     if (!fs.existsSync(targetDir)) {
       return {
         ok: false,
@@ -291,6 +300,14 @@ export class DesktopExecutor {
    */
   public async organizeSmart(rawPath?: string, dryRun: boolean = false): Promise<ExecutionResult> {
     const targetDir = this.normalizePath(rawPath);
+    if (path.resolve(targetDir) === path.resolve(process.cwd())) {
+      return {
+        ok: false,
+        action: 'file_organize_smart',
+        output: '',
+        error: 'Refusing to organize application repository root directory. Target a subfolder or external drive (e.g. "D:\\").',
+      };
+    }
     try {
       const result = await this.smartOrganizer.organizeDirectoryByContent(targetDir, { dryRun });
       const summary = [
