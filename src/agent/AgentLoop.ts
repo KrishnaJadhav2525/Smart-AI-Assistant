@@ -175,9 +175,15 @@ export class AgentLoop {
     const page = await this.browserManager.getPage();
     const executor = new ActionExecutor(page, this.snapshotEngine, this.securityPolicy);
 
-    // Initial navigation: only navigate if a web URL is explicitly provided or if task requires web browsing
-    const isLocalTask = !options.initialUrl && (isLocalOrDesktopTask(options.goal) || !promptAnalysis.suggestedUrl);
-    const targetUrl = options.initialUrl || (!isLocalTask ? promptAnalysis.suggestedUrl || 'https://www.google.com' : undefined);
+    // 1. Detect if target URL is specified directly in options or inside the prompt text
+    const urlMatch = options.goal.match(/(?:https?|file):\/\/[^\s]+/i);
+    const urlInGoal = urlMatch ? urlMatch[0].replace(/[),;.]+$/, '') : undefined;
+
+    // A task is ONLY a local task if NO web URL is provided AND goal is purely local files/desktop
+    const isLocalTask = !options.initialUrl && !urlInGoal && isLocalOrDesktopTask(options.goal);
+
+    // Determine target URL for web browsing
+    const targetUrl = options.initialUrl || urlInGoal || (!isLocalTask ? (promptAnalysis.suggestedUrl || 'https://www.google.com') : undefined);
 
     if (targetUrl) {
       const navResult = await executor.navigate(targetUrl);
@@ -550,13 +556,15 @@ ${verifiedRecords
     );
 
     if (hasExecutedFileAction) {
+      const lastFileStep = [...steps].reverse().find((s) => s.toolName.startsWith('file_') || s.toolName.startsWith('desktop_'));
+      const realOutput = lastFileStep?.output || `Operations completed on disk for: "${goal}"`;
       return {
         toolName: 'browser_done',
         args: {
-          summary: `Successfully completed local operations for: "${goal}"`,
-          finalAnswer: `Local operations on disk completed successfully as instructed: "${goal}". All files and directories have been verified on disk.`,
+          summary: realOutput.slice(0, 300),
+          finalAnswer: realOutput,
         },
-        thought: 'Completed local disk operations. Reporting final answer.',
+        thought: 'Completed local disk operations. Reporting actual execution results.',
       };
     }
 

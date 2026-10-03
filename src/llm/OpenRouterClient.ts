@@ -70,6 +70,10 @@ const MODEL_ALIASES: Record<string, string> = {
   'gpt-4o': 'openai/gpt-4o',
   'gpt-4o-mini': 'openai/gpt-4o-mini',
   'gemini-flash': 'google/gemini-2.5-flash',
+  'gemini-3.8-flash-tiered[1m]': 'google/gemini-2.5-flash',
+  'gemini-3.7-flash-tiered[1m]': 'google/gemini-2.5-flash',
+  'gemini-3.1-pro-high[1m]': 'google/gemini-2.5-flash',
+  'claude-sonnet-4-6': 'anthropic/claude-sonnet-4',
   claude: 'anthropic/claude-sonnet-4',
   haiku: 'anthropic/claude-3-haiku',
   'claude-3-haiku': 'anthropic/claude-3-haiku',
@@ -324,6 +328,8 @@ export class OpenRouterClient {
   
   public async analyzePrompt(goal: string): Promise<PromptAnalysisResult> {
     const isLocal = isLocalOrDesktopTask(goal);
+    const urlMatch = goal.match(/(?:https?|file):\/\/[^\s]+/i);
+    const urlInGoal = urlMatch ? urlMatch[0].replace(/[),;.]+$/, '') : undefined;
     let extractedPath = 'D:\\';
     const driveMatch = goal.match(/\b(?:drive\s+([a-zA-Z])|([a-zA-Z]):[\\/]?)/i);
     if (driveMatch) {
@@ -345,14 +351,14 @@ export class OpenRouterClient {
         }
       : {
           understanding: `Task goal: ${goal}`,
-          parameters: { prompt: goal },
+          parameters: { prompt: goal, url: urlInGoal || 'https://www.google.com' },
           strategy: [
-            `Analyze requirement for "${goal}"`,
-            `Navigate to target web service or search engine`,
-            `Search, extract, and interact with page elements`,
-            `Compile results and present final answer`
+            `Navigate to ${urlInGoal || 'target web service or search engine'}`,
+            `Inspect page accessibility snapshot and interact with elements`,
+            `Fill form fields or extract required data`,
+            `Submit or conclude task and present final answer`
           ],
-          suggestedUrl: 'https://www.google.com'
+          suggestedUrl: urlInGoal || 'https://www.google.com'
         };
 
     if (!this.client || this.mockHandler) {
@@ -367,6 +373,7 @@ export class OpenRouterClient {
           {
             role: 'system',
             content: `You are an AI task planner. Analyze the user's prompt and output JSON.
+If the prompt contains a specific URL, set "suggestedUrl" to that exact URL.
 If the prompt is for local desktop or filesystem tasks (organizing files, drives like D:, folders, notes, local apps):
 - Set "suggestedUrl" to null.
 - Formulate a 3-4 step strategy using local filesystem tools (inspecting content, smart categorization, renaming folders).
@@ -392,7 +399,7 @@ Return ONLY valid JSON matching this schema:
       const match = content.match(/\{[\s\S]*\}/);
       if (match) {
         const parsed = JSON.parse(match[0]);
-        let suggestedUrl = parsed.suggestedUrl || defaultResult.suggestedUrl;
+        let suggestedUrl = urlInGoal || parsed.suggestedUrl || defaultResult.suggestedUrl;
         if (isLocal) {
           suggestedUrl = undefined;
         }

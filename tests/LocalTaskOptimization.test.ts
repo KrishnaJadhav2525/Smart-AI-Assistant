@@ -76,4 +76,38 @@ describe('Local Task Optimization & Non-Web Execution', () => {
       await fs.promises.rm(testDir, { recursive: true, force: true }).catch(() => {});
     }
   }, 15000);
+
+  it('4. Accurately extracts URL embedded in prompt text and navigates directly to target URL', async () => {
+    const fixturePath = path.resolve(process.cwd(), 'tests', 'fixtures', 'test-page.html');
+    const targetUrl = `file://${fixturePath.replace(/\\/g, '/').replace(/ /g, '%20')}`;
+
+    const browserManager = new BrowserManager({ headless: true });
+    const client = new OpenRouterClient();
+    client.setMockHandler(async () => {
+      return {
+        toolName: 'browser_done',
+        args: { summary: 'Arrived at form page' },
+        thought: 'Navigated to the target form URL.',
+      };
+    });
+
+    const security = new SecurityPolicy({ allowFileProtocol: true, allowedDomains: '*' });
+    const loop = new AgentLoop(browserManager, client, security);
+
+    try {
+      const result = await loop.run({
+        goal: `${targetUrl} fill this form`,
+        maxSteps: 3,
+        takeScreenshots: false,
+      });
+
+      // Verify that step 2 navigated directly to targetUrl, NOT google.com
+      const navStep = result.steps.find((s) => s.toolName === 'browser_navigate');
+      expect(navStep).toBeDefined();
+      expect(navStep?.args.url).toBe(targetUrl);
+      expect(navStep?.args.url).not.toContain('google.com');
+    } finally {
+      await browserManager.close().catch(() => {});
+    }
+  }, 15000);
 });
