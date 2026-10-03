@@ -355,6 +355,20 @@ export function getDashboardHtml(): string {
                 <button type="button" id="closeUrlInputBtn" onclick="window.toggleUrlContainer(false)" class="text-light-muted dark:text-gpt-muted hover:text-light-text dark:hover:text-gpt-text relative z-30">✕</button>
               </div>
 
+              <!-- Live Voice Transcribing Indicator Bar -->
+              <div id="liveVoiceBar" class="hidden px-3 py-1 mb-1 rounded-full bg-emerald-500/10 border border-emerald-500/25 flex items-center justify-between text-xs text-emerald-600 dark:text-emerald-400 relative z-30">
+                <div class="flex items-center gap-2">
+                  <span class="inline-block w-2 h-2 rounded-full bg-rose-500 animate-ping"></span>
+                  <span class="font-semibold text-[11px] tracking-wide">LIVE TRANSCRIBING</span>
+                  <div class="flex items-center gap-0.5 ml-1">
+                    <span class="inline-block w-1 h-3 bg-emerald-500 rounded-full animate-pulse"></span>
+                    <span class="inline-block w-1 h-4 bg-emerald-400 rounded-full animate-bounce"></span>
+                    <span class="inline-block w-1 h-2 bg-emerald-500 rounded-full animate-pulse"></span>
+                  </div>
+                </div>
+                <span id="liveVoiceStatus" class="text-[10px] text-light-muted dark:text-gpt-muted font-mono">Listening in real-time...</span>
+              </div>
+
               <div class="flex items-end gap-2 px-2 pt-1 pb-1 relative z-30">
                 <button type="button" id="toggleUrlBtn" onclick="window.toggleUrlContainer()" class="p-2 rounded-full text-light-muted dark:text-gpt-muted hover:bg-light-bg dark:hover:bg-gpt-cardHover transition-colors flex-shrink-0 relative z-30 cursor-pointer" title="Attach Start URL">
                   <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/></svg>
@@ -833,9 +847,10 @@ export function getDashboardHtml(): string {
       }
     };
 
-    // Offline Speech-to-Text with faster-whisper (small.en)
+    // Real-Time Live Speech-to-Text with Web Speech API & faster-whisper (small.en)
     window.voiceState = {
       isListening: false,
+      recognition: null,
       audioContext: null,
       mediaStream: null,
       scriptProcessor: null,
@@ -845,7 +860,13 @@ export function getDashboardHtml(): string {
       speechBuffer: [],
       isSpeaking: false,
       silenceStartTime: 0,
-      speechStartTime: 0
+      speechStartTime: 0,
+      basePromptText: '',
+      finalTranscript: '',
+      interimTranscript: '',
+      hasLiveWebSpeech: false,
+      lastInterimSendTime: 0,
+      isInterimTranscribing: false
     };
 
     function encodeWavPcm16(float32Arrays, sampleRate) {
@@ -893,6 +914,41 @@ export function getDashboardHtml(): string {
       return new Blob([view], { type: 'audio/wav' });
     }
 
+    window.updateLiveTranscribingInput = function() {
+      var promptInput = document.getElementById('taskPromptInput');
+      if (!promptInput) return;
+
+      var base = (window.voiceState.basePromptText || '').trim();
+      var finalPart = (window.voiceState.finalTranscript || '').trim();
+      var interimPart = (window.voiceState.interimTranscript || '').trim();
+
+      var spoken = finalPart;
+      if (interimPart) {
+        spoken = spoken ? (spoken + ' ' + interimPart) : interimPart;
+      }
+
+      var fullText = base;
+      if (spoken) {
+        fullText = fullText ? (fullText + ' ' + spoken) : spoken;
+      }
+
+      promptInput.value = fullText;
+      promptInput.style.height = 'auto';
+      promptInput.style.height = Math.min(promptInput.scrollHeight, 144) + 'px';
+      promptInput.scrollTop = promptInput.scrollHeight;
+
+      var statusSpan = document.getElementById('liveVoiceStatus');
+      if (statusSpan) {
+        if (interimPart) {
+          statusSpan.textContent = 'Speaking: "' + interimPart.slice(-30) + '..."';
+        } else if (finalPart) {
+          statusSpan.textContent = 'Captured ' + finalPart.split(/\s+/).filter(Boolean).length + ' words';
+        } else {
+          statusSpan.textContent = 'Listening in real-time...';
+        }
+      }
+    };
+
     window.toggleVoiceListening = function() {
       if (window.voiceState.isListening) {
         window.stopVoiceListening(true);
@@ -907,6 +963,68 @@ export function getDashboardHtml(): string {
         return;
       }
 
+      var promptInput = document.getElementById('taskPromptInput');
+      window.voiceState.basePromptText = promptInput ? promptInput.value.trim() : '';
+      window.voiceState.finalTranscript = '';
+      window.voiceState.interimTranscript = '';
+      window.voiceState.hasLiveWebSpeech = false;
+      window.voiceState.isInterimTranscribing = false;
+      window.voiceState.lastInterimSendTime = 0;
+
+      // 1. Initialize Browser SpeechRecognition for zero-latency word-by-word streaming in input field
+      var SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (SpeechRec) {
+        try {
+          var rec = new SpeechRec();
+          rec.continuous = true;
+          rec.interimResults = true;
+          rec.lang = 'en-US';
+          rec.maxAlternatives = 1;
+
+          rec.onstart = function() {
+            window.voiceState.hasLiveWebSpeech = true;
+          };
+
+          rec.onresult = function(e) {
+            if (!window.voiceState.isListening) return;
+            var interim = '';
+            for (var i = e.resultIndex; i < e.results.length; ++i) {
+              var res = e.results[i];
+              if (res.isFinal) {
+                var clean = res[0].transcript.trim();
+                if (clean) {
+                  window.voiceState.finalTranscript += (window.voiceState.finalTranscript ? ' ' : '') + clean;
+                }
+                interim = '';
+              } else {
+                interim += res[0].transcript;
+              }
+            }
+            window.voiceState.interimTranscript = interim;
+            window.updateLiveTranscribingInput();
+          };
+
+          rec.onerror = function(e) {
+            console.warn('[WebSpeech API] event:', e.error);
+            if (e.error === 'not-allowed') {
+              window.showToast('Microphone permission blocked.');
+            }
+          };
+
+          rec.onend = function() {
+            if (window.voiceState.isListening && window.voiceState.hasLiveWebSpeech) {
+              try { rec.start(); } catch(err) {}
+            }
+          };
+
+          rec.start();
+          window.voiceState.recognition = rec;
+        } catch(recErr) {
+          console.warn('[WebSpeech API] failed to initialize:', recErr);
+        }
+      }
+
+      // 2. Initialize Web Audio API for continuous RMS tracking, VAD, and offline Whisper recording
       navigator.mediaDevices.getUserMedia({
         audio: {
           echoCancellation: true,
@@ -934,7 +1052,7 @@ export function getDashboardHtml(): string {
         window.voiceState.noiseFloor = 0.01;
 
         window.updateVoiceUI(true);
-        window.showToast('🎙️ Listening... speak now');
+        window.showToast('🎙️ Live Listening... speak now');
 
         processor.onaudioprocess = function(e) {
           if (!window.voiceState.isListening) return;
@@ -966,12 +1084,18 @@ export function getDashboardHtml(): string {
             }
             window.voiceState.speechBuffer.push(copy);
             window.voiceState.silenceStartTime = 0;
+
+            // If WebSpeech is unavailable or not outputting, periodically send interim audio to Whisper
+            if (!window.voiceState.hasLiveWebSpeech && !window.voiceState.isInterimTranscribing && Date.now() - window.voiceState.lastInterimSendTime > 1200) {
+              window.voiceState.lastInterimSendTime = Date.now();
+              window.sendInterimWhisperChunk();
+            }
           } else {
             if (window.voiceState.isSpeaking) {
               window.voiceState.speechBuffer.push(copy);
               if (window.voiceState.silenceStartTime === 0) {
                 window.voiceState.silenceStartTime = Date.now();
-              } else if (Date.now() - window.voiceState.silenceStartTime > 1200) {
+              } else if (Date.now() - window.voiceState.silenceStartTime > 1400) {
                 // Natural pause detected -> dispatch speech segment
                 window.finalizeAndSendAudio();
               }
@@ -990,6 +1114,32 @@ export function getDashboardHtml(): string {
       })
       .catch(function(err) {
         window.showToast('Microphone access denied: ' + err.message);
+        window.updateVoiceUI(false);
+      });
+    };
+
+    window.sendInterimWhisperChunk = function() {
+      var chunks = window.voiceState.speechBuffer;
+      if (!chunks || chunks.length < 3) return;
+      window.voiceState.isInterimTranscribing = true;
+
+      var wavBlob = encodeWavPcm16(chunks, 16000);
+      fetch('/api/transcribe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'audio/wav' },
+        body: wavBlob
+      })
+      .then(function(res) { return res.json(); })
+      .then(function(data) {
+        window.voiceState.isInterimTranscribing = false;
+        if (data.ok && data.text && window.voiceState.isListening) {
+          window.voiceState.finalTranscript = data.text.trim();
+          window.voiceState.interimTranscript = '';
+          window.updateLiveTranscribingInput();
+        }
+      })
+      .catch(function() {
+        window.voiceState.isInterimTranscribing = false;
       });
     };
 
@@ -1017,20 +1167,20 @@ export function getDashboardHtml(): string {
       .then(function(data) {
         window.updateVoiceUI(window.voiceState.isListening);
         if (data.ok && data.text) {
-          var promptInput = document.getElementById('taskPromptInput');
-          if (promptInput) {
-            var current = promptInput.value.trim();
-            promptInput.value = current ? (current + ' ' + data.text.trim()) : data.text.trim();
-            promptInput.focus();
+          var whisperText = data.text.trim();
+          if (!window.voiceState.finalTranscript || whisperText.length > window.voiceState.finalTranscript.length) {
+            window.voiceState.finalTranscript = whisperText;
+            window.voiceState.interimTranscript = '';
+            window.updateLiveTranscribingInput();
           }
-          window.showToast('🎙️ Heard: "' + data.text.trim() + '"');
+          window.showToast('🎙️ Transcribed: "' + (window.voiceState.finalTranscript || whisperText) + '"');
         } else if (data.error) {
-          window.showToast('Whisper: ' + data.error);
+          console.warn('Whisper info:', data.error);
         }
       })
       .catch(function(err) {
         window.updateVoiceUI(window.voiceState.isListening);
-        window.showToast('Transcription error: ' + err.message);
+        console.warn('Whisper fetch error:', err.message);
       });
     };
 
@@ -1040,6 +1190,13 @@ export function getDashboardHtml(): string {
       }
 
       window.voiceState.isListening = false;
+      if (window.voiceState.recognition) {
+        try {
+          window.voiceState.recognition.onend = null;
+          window.voiceState.recognition.stop();
+        } catch(e) {}
+        window.voiceState.recognition = null;
+      }
       if (window.voiceState.scriptProcessor) {
         try { window.voiceState.scriptProcessor.disconnect(); } catch(e) {}
         window.voiceState.scriptProcessor = null;
@@ -1059,6 +1216,14 @@ export function getDashboardHtml(): string {
         window.voiceState.audioContext = null;
       }
 
+      // Finalize text in prompt input and place cursor at end
+      window.updateLiveTranscribingInput();
+      var promptInput = document.getElementById('taskPromptInput');
+      if (promptInput) {
+        promptInput.focus();
+        promptInput.selectionStart = promptInput.selectionEnd = promptInput.value.length;
+      }
+
       window.updateVoiceUI(false);
     };
 
@@ -1066,24 +1231,28 @@ export function getDashboardHtml(): string {
       var btn = document.getElementById('voiceMicBtn');
       var icon = document.getElementById('voiceMicIcon');
       var textarea = document.getElementById('taskPromptInput');
+      var liveBar = document.getElementById('liveVoiceBar');
 
       if (!btn || !icon) return;
 
       if (isProcessing) {
         icon.textContent = '⏳';
         btn.className = 'w-9 h-9 rounded-full bg-amber-500/20 text-amber-500 border border-amber-500/30 flex items-center justify-center transition-all shadow-md cursor-wait relative z-30 animate-pulse';
-        btn.title = 'Transcribing with faster-whisper small.en...';
-        if (textarea) textarea.placeholder = 'Transcribing voice with offline Whisper small.en...';
+        btn.title = 'Refining transcription with Whisper small.en...';
+        if (textarea) textarea.placeholder = 'Finalizing voice transcription...';
+        if (liveBar) liveBar.classList.remove('hidden');
       } else if (isListening) {
         icon.textContent = '🔴';
         btn.className = 'w-9 h-9 rounded-full bg-rose-500/20 text-rose-500 border border-rose-500/50 flex items-center justify-center transition-all shadow-md cursor-pointer relative z-30 animate-pulse';
-        btn.title = 'Listening... tap again to stop';
-        if (textarea) textarea.placeholder = '🎙️ Listening... speak now (Offline Whisper small.en)';
+        btn.title = 'Live listening... tap again to stop';
+        if (textarea) textarea.placeholder = '🎙️ Listening... speak now (live transcribing in real-time)';
+        if (liveBar) liveBar.classList.remove('hidden');
       } else {
         icon.textContent = '🎙️';
         btn.className = 'w-9 h-9 rounded-full bg-light-bg dark:bg-gpt-card hover:bg-emerald-500/15 text-light-muted dark:text-gpt-muted hover:text-emerald-500 border border-light-border dark:border-gpt-border flex items-center justify-center transition-all shadow-md cursor-pointer relative z-30';
-        btn.title = 'Tap to speak (Offline faster-whisper small.en)';
+        btn.title = 'Tap to speak (Live Real-Time Transcribing)';
         if (textarea) textarea.placeholder = 'Instruct the agent to search, navigate, or summarize...';
+        if (liveBar) liveBar.classList.add('hidden');
       }
     };
 
