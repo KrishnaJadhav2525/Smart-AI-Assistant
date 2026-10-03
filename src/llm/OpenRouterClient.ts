@@ -35,7 +35,8 @@ export function isLocalOrDesktopTask(goal: string): boolean {
     /\b(?:organize|organise|orgnize|cleanup|clean up|sort)\b/i,
     /\b(?:rename|move|copy|delete|list)\b.*(?:folder|folders|file|files|dir|directory)\b/i,
     /\b(?:folder|folders|directory|directories|files?)\b/i,
-    /\b(?:desktop|notepad|calculator|calc|explorer)\b/i,
+    /\b(?:desktop|notepad|calculator|calc|explorer|camera|cmaera|webcam|paint|mspaint|settings|terminal|cmd|powershell|taskmgr|task manager)\b/i,
+    /\b(?:open|launch|start)\s+(?:camera|cmaera|webcam|notepad|calculator|calc|paint|mspaint|settings|terminal|cmd|powershell|task manager|explorer|app|application)\b/i,
     /\b(?:write note|take note|save note)\b/i,
   ];
 
@@ -337,18 +338,43 @@ export class OpenRouterClient {
       extractedPath = `${letter}:\\`;
     }
 
+    const g = goal.toLowerCase();
+    const isAppLaunch =
+      /\b(?:open|launch|start)\s+(?:camera|cmaera|webcam|notepad|calculator|calc|paint|mspaint|settings|terminal|cmd|powershell|task manager|explorer|app|application)\b/i.test(goal) ||
+      /\b(?:camera|cmaera|webcam)\b/i.test(goal);
+
+    let appName = 'camera';
+    if (g.includes('camera') || g.includes('cmaera') || g.includes('webcam')) appName = 'camera';
+    else if (g.includes('calc') || g.includes('calculator')) appName = 'calc';
+    else if (g.includes('notepad')) appName = 'notepad';
+    else if (g.includes('paint') || g.includes('mspaint')) appName = 'paint';
+    else if (g.includes('settings')) appName = 'settings';
+    else if (g.includes('explorer')) appName = 'explorer';
+    else if (g.includes('terminal') || g.includes('cmd') || g.includes('powershell')) appName = 'terminal';
+
     const defaultResult: PromptAnalysisResult = isLocal
-      ? {
-          understanding: `Local computer & file operations: ${goal}`,
-          parameters: { targetPath: extractedPath, operation: 'file_organize_smart' },
-          strategy: [
-            `Identify target directory or drive (${extractedPath})`,
-            `Inspect existing folders and scan file contents semantically`,
-            `Execute content-aware file organization or folder renaming on disk`,
-            `Verify disk structure changes and report completed summary`
-          ],
-          suggestedUrl: undefined
-        }
+      ? isAppLaunch
+        ? {
+            understanding: `Launch native desktop application: ${appName}`,
+            parameters: { app: appName, operation: 'desktop_launch_app' },
+            strategy: [
+              `Identify requested desktop application ("${appName}")`,
+              `Launch native desktop application via system execution`,
+              `Verify application process launch and report completed status`
+            ],
+            suggestedUrl: undefined
+          }
+        : {
+            understanding: `Local computer & file operations: ${goal}`,
+            parameters: { targetPath: extractedPath, operation: 'file_organize_smart' },
+            strategy: [
+              `Identify target directory or drive (${extractedPath})`,
+              `Inspect existing folders and scan file contents semantically`,
+              `Execute content-aware file organization or folder renaming on disk`,
+              `Verify disk structure changes and report completed summary`
+            ],
+            suggestedUrl: undefined
+          }
       : {
           understanding: `Task goal: ${goal}`,
           parameters: { prompt: goal, url: urlInGoal || 'https://www.google.com' },

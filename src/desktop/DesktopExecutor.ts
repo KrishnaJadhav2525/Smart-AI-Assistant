@@ -574,7 +574,11 @@ export class DesktopExecutor {
     const normalizedApp = (app || '').toLowerCase().trim();
     const resolvedPath = targetPath ? this.normalizePath(targetPath) : undefined;
 
-    const allowedApps = ['notepad', 'calc', 'calculator', 'explorer', 'code'];
+    const allowedApps = [
+      'notepad', 'calc', 'calculator', 'explorer', 'code',
+      'camera', 'webcam', 'paint', 'mspaint', 'settings',
+      'terminal', 'cmd', 'powershell', 'taskmgr'
+    ];
     if (!allowedApps.includes(normalizedApp)) {
       return {
         ok: false,
@@ -587,24 +591,55 @@ export class DesktopExecutor {
     try {
       if (process.env.NODE_ENV !== 'test' && !process.env.VITEST) {
         if (process.platform === 'win32') {
-          const cmd = normalizedApp === 'notepad'
-            ? 'notepad.exe'
-            : normalizedApp === 'calc' || normalizedApp === 'calculator'
-            ? 'calc.exe'
-            : normalizedApp === 'explorer'
-            ? 'explorer.exe'
-            : 'code.cmd';
+          let cmd = 'notepad.exe';
+          let args: string[] = resolvedPath ? [resolvedPath] : [];
 
-          const args = resolvedPath ? [resolvedPath] : [];
+          if (normalizedApp === 'notepad') {
+            cmd = 'notepad.exe';
+          } else if (normalizedApp === 'calc' || normalizedApp === 'calculator') {
+            cmd = 'calc.exe';
+          } else if (normalizedApp === 'explorer') {
+            cmd = 'explorer.exe';
+          } else if (normalizedApp === 'code') {
+            cmd = 'code.cmd';
+          } else if (normalizedApp === 'camera' || normalizedApp === 'webcam') {
+            cmd = 'cmd.exe';
+            args = ['/c', 'start', 'microsoft.windows.camera:'];
+          } else if (normalizedApp === 'paint' || normalizedApp === 'mspaint') {
+            cmd = 'mspaint.exe';
+          } else if (normalizedApp === 'settings') {
+            cmd = 'cmd.exe';
+            args = ['/c', 'start', 'ms-settings:'];
+          } else if (normalizedApp === 'terminal' || normalizedApp === 'cmd') {
+            cmd = 'cmd.exe';
+            args = ['/c', 'start', 'cmd.exe'];
+          } else if (normalizedApp === 'powershell') {
+            cmd = 'powershell.exe';
+          } else if (normalizedApp === 'taskmgr') {
+            cmd = 'taskmgr.exe';
+          }
+
           const proc = spawn(cmd, args, { detached: true, stdio: 'ignore' });
           proc.unref();
         } else if (process.platform === 'darwin') {
-          const appName = normalizedApp === 'notepad' ? 'TextEdit' : 'Calculator';
+          const appName =
+            normalizedApp === 'camera' || normalizedApp === 'webcam'
+              ? 'Photo Booth'
+              : normalizedApp === 'calc' || normalizedApp === 'calculator'
+              ? 'Calculator'
+              : normalizedApp === 'paint' || normalizedApp === 'mspaint'
+              ? 'Preview'
+              : 'TextEdit';
           const args = resolvedPath ? ['-a', appName, resolvedPath] : ['-a', appName];
           const proc = spawn('open', args, { detached: true, stdio: 'ignore' });
           proc.unref();
         } else {
-          const cmd = normalizedApp === 'notepad' ? 'gedit' : 'xdg-open';
+          const cmd =
+            normalizedApp === 'camera' || normalizedApp === 'webcam'
+              ? 'cheese'
+              : normalizedApp === 'calc' || normalizedApp === 'calculator'
+              ? 'gnome-calculator'
+              : 'gedit';
           const args = resolvedPath ? [resolvedPath] : [];
           const proc = spawn(cmd, args, { detached: true, stdio: 'ignore' });
           proc.unref();

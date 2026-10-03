@@ -640,6 +640,38 @@ ${verifiedRecords
       };
     }
 
+    if (g.includes('camera') || g.includes('cmaera') || g.includes('webcam')) {
+      return {
+        toolName: 'desktop_launch_app',
+        args: { app: 'camera' },
+        thought: 'Autonomous execution: launching native desktop Camera application.',
+      };
+    }
+
+    if (g.includes('calc') || g.includes('calculator')) {
+      return {
+        toolName: 'desktop_launch_app',
+        args: { app: 'calc' },
+        thought: 'Autonomous execution: launching native desktop Calculator application.',
+      };
+    }
+
+    if (g.includes('paint') || g.includes('mspaint')) {
+      return {
+        toolName: 'desktop_launch_app',
+        args: { app: 'paint' },
+        thought: 'Autonomous execution: launching native desktop Paint application.',
+      };
+    }
+
+    if (g.includes('settings')) {
+      return {
+        toolName: 'desktop_launch_app',
+        args: { app: 'settings' },
+        thought: 'Autonomous execution: launching Windows Settings.',
+      };
+    }
+
     if (g.includes('organize') || g.includes('organise') || g.includes('orgnize') || g.includes('cleanup')) {
       return {
         toolName: 'file_organize_smart',

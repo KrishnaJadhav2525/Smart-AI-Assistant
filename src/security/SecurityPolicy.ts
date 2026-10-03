@@ -176,7 +176,11 @@ export class SecurityPolicy {
 
     if (toolName === 'desktop_launch_app') {
       const app = String(args.app || '').toLowerCase().trim();
-      const standardApps = ['notepad', 'calc', 'calculator', 'explorer', 'code'];
+      const standardApps = [
+        'notepad', 'calc', 'calculator', 'explorer', 'code',
+        'camera', 'webcam', 'paint', 'mspaint', 'settings',
+        'terminal', 'cmd', 'powershell', 'taskmgr'
+      ];
       if (!standardApps.includes(app)) {
         return {
           risk: 'HIGH',

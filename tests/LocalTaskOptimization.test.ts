@@ -15,6 +15,11 @@ describe('Local Task Optimization & Non-Web Execution', () => {
     expect(isLocalOrDesktopTask('rename folders based on content')).toBe(true);
     expect(isLocalOrDesktopTask('open notepad and write note on findings')).toBe(true);
     expect(isLocalOrDesktopTask('list directory files in d')).toBe(true);
+    expect(isLocalOrDesktopTask('open camera')).toBe(true);
+    expect(isLocalOrDesktopTask('open cmaera')).toBe(true);
+    expect(isLocalOrDesktopTask('open calculator')).toBe(true);
+    expect(isLocalOrDesktopTask('open paint')).toBe(true);
+    expect(isLocalOrDesktopTask('launch camera app')).toBe(true);
 
     // Web automation prompts
     expect(isLocalOrDesktopTask('search for bus tickets from chennai to vellore')).toBe(false);
@@ -106,6 +111,37 @@ describe('Local Task Optimization & Non-Web Execution', () => {
       expect(navStep).toBeDefined();
       expect(navStep?.args.url).toBe(targetUrl);
       expect(navStep?.args.url).not.toContain('google.com');
+    } finally {
+      await browserManager.close().catch(() => {});
+    }
+  }, 15000);
+
+  it('5. Recognizes "open camera" as local desktop utility and dispatches desktop_launch_app', async () => {
+    const client = new OpenRouterClient();
+    const analysis = await client.analyzePrompt('open camera');
+
+    expect(analysis.suggestedUrl).toBeUndefined();
+    expect(analysis.parameters.app).toBe('camera');
+    expect(analysis.parameters.operation).toBe('desktop_launch_app');
+
+    const browserManager = new BrowserManager({ headless: true });
+    const loop = new AgentLoop(browserManager, client, new SecurityPolicy());
+
+    try {
+      const result = await loop.run({
+        goal: 'open camera',
+        maxSteps: 3,
+        takeScreenshots: false,
+      });
+
+      // Assert no browser navigation to Google occurred
+      const navSteps = result.steps.filter((s) => s.toolName === 'browser_navigate');
+      expect(navSteps.length).toBe(0);
+
+      // Assert desktop_launch_app was executed
+      const launchStep = result.steps.find((s) => s.toolName === 'desktop_launch_app');
+      expect(launchStep).toBeDefined();
+      expect(launchStep?.args.app).toBe('camera');
     } finally {
       await browserManager.close().catch(() => {});
     }
