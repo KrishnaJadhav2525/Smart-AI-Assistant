@@ -388,8 +388,8 @@ export function getDashboardHtml(): string {
                   </button>
 
                   <!-- Run / Stop Button -->
-                  <button type="button" id="runAgentBtn" onclick="window.executeTaskRun()" class="w-9 h-9 rounded-full bg-emerald-500 hover:bg-emerald-400 text-white flex items-center justify-center transition-all shadow-md cursor-pointer relative z-30" title="Run Agent">
-                    <svg id="runIcon" class="w-4 h-4 transform rotate-90" fill="currentColor" viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+                  <button type="button" id="runAgentBtn" onclick="window.executeTaskRun()" class="w-9 h-9 rounded-full bg-emerald-500 hover:bg-emerald-400 text-white flex items-center justify-center transition-all shadow-md cursor-pointer relative z-30" title="Send / Run Task">
+                    <svg id="runIcon" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 12h14M12 5l7 7-7 7"/></svg>
                     <svg id="stopIcon" class="w-4 h-4 hidden" fill="currentColor" viewBox="0 0 24 24"><rect x="5" y="5" width="14" height="14" rx="2"/></svg>
                   </button>
                 </div>
@@ -1909,9 +1909,15 @@ export function getDashboardHtml(): string {
       if (window.location.pathname !== '/') {
         history.pushState(null, '', '/');
       }
+      window.state.currentChatId = null;
+      window.state.stepCount = 0;
+      window.state.isRunning = false;
+      window.setRunningUI(false);
+
       var input = document.getElementById('taskPromptInput');
       if (input) {
         input.value = '';
+        input.style.height = 'auto';
         input.focus();
       }
       var urlInput = document.getElementById('startUrlInput');
@@ -1926,6 +1932,32 @@ export function getDashboardHtml(): string {
       if (stepMetric) stepMetric.textContent = '0';
       var elapsedMetric = document.getElementById('metricElapsed');
       if (elapsedMetric) elapsedMetric.textContent = '0.0s';
+
+      var ur = document.getElementById('browserUrlDisplay');
+      if (ur) ur.textContent = 'about:blank';
+
+      var img = document.getElementById('realLiveFrame');
+      var placeholder = document.getElementById('browserPlaceholder');
+      if (img) {
+        img.classList.add('hidden');
+        img.src = '';
+      }
+      if (placeholder) {
+        placeholder.classList.remove('hidden');
+        placeholder.innerHTML = '<div class="w-10 h-10 rounded-2xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center text-xl shadow-inner mb-2">🌐</div>' +
+          '<strong class="text-sm font-semibold text-light-text dark:text-gpt-text">Live Browser Viewport</strong>' +
+          '<p class="text-xs text-light-muted dark:text-gpt-muted max-w-xs leading-relaxed">Start an agent task to stream the live browser screen.<br>Updates every ~800ms.</p>';
+      }
+
+      var tc = document.getElementById('resTextContent');
+      if (tc) tc.innerHTML = 'Waiting for agent run...';
+      var jv = document.getElementById('jsonViewer');
+      if (jv) jv.textContent = '{}';
+      var rb = document.getElementById('resBadge');
+      if (rb) {
+        rb.className = 'inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-light-card dark:bg-gpt-card text-light-muted dark:text-gpt-muted border border-light-border dark:border-gpt-border';
+        rb.innerHTML = '⚡ Ready for Task';
+      }
 
       window.switchCanvasTab('live');
       window.loadRecentChats();
