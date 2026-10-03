@@ -7,15 +7,19 @@ export interface MoveRecord {
   newPath: string;
   filename: string;
   category: string;
+  type?: 'file' | 'folder';
 }
 
 export interface OrganizeResult {
   targetDirectory: string;
   totalFilesScanned: number;
+  totalFoldersScanned?: number;
   filesMoved: number;
+  foldersMoved?: number;
   categoriesCreated: string[];
   manifestPath: string;
   moves: MoveRecord[];
+  summaryMessage?: string;
 }
 
 export interface FolderRenameResult {
@@ -31,13 +35,21 @@ export interface FolderRenameResult {
 export class SmartOrganizer {
   private inspector: FileInspector;
 
+  private static PROTECTED_DIR_NAMES = new Set([
+    '$recycle.bin', 'system volume information', 'boot', 'programdata',
+    'program files', 'program files (x86)', 'users', 'windows',
+    'recovery', 'appdata', 'msocache', 'documents_and_reports',
+    'development_and_projects', 'studies_and_assignments', 'archives_and_backups',
+    'media_and_audio', 'general_files', 'other_files', 'code_and_scripts'
+  ]);
+
   constructor() {
     this.inspector = new FileInspector();
   }
 
   /**
-   * Semantically organizes files in a target directory by inspecting their inner contents,
-   * grouping by business topics (e.g. Invoices, Taxes, Resumes, Research) rather than mere extensions.
+   * Semantically organizes both files AND folders in a target directory or drive,
+   * grouping by business topics (e.g. Invoices, Projects, Studies, Archives) rather than mere extensions.
    */
   public async organizeDirectoryByContent(
     targetDir: string,
@@ -50,13 +62,14 @@ export class SmartOrganizer {
 
     const entries = await fs.promises.readdir(resolvedTarget, { withFileTypes: true });
     const fileEntries = entries.filter((e) => e.isFile());
+    const dirEntries = entries.filter((e) => e.isDirectory());
 
     const moves: MoveRecord[] = [];
     const categories = new Set<string>();
 
+    // 1. Organize loose files in target directory
     for (const entry of fileEntries) {
       const fullPath = path.join(resolvedTarget, entry.name);
-      // Skip hidden files, system files, and manifest logs
       if (entry.name.startsWith('.') || entry.name.startsWith('organizer-manifest')) {
         continue;
       }
@@ -73,7 +86,6 @@ export class SmartOrganizer {
 
       if (!options.dryRun) {
         await fs.promises.mkdir(targetFolder, { recursive: true });
-        // Handle name collisions if file already exists in destination
         const safeDestination = this.getUniqueDestination(targetFilePath);
         await fs.promises.rename(fullPath, safeDestination);
 
@@ -82,6 +94,7 @@ export class SmartOrganizer {
           newPath: safeDestination,
           filename: entry.name,
           category: destinationFolder,
+          type: 'file',
         });
       } else {
         moves.push({
@@ -89,10 +102,60 @@ export class SmartOrganizer {
           newPath: targetFilePath,
           filename: entry.name,
           category: destinationFolder,
+          type: 'file',
         });
       }
 
       categories.add(destinationFolder);
+    }
+
+    // 2. Organize user subfolders in target directory (e.g. on D:\ drive)
+    for (const entry of dirEntries) {
+      const lowerName = entry.name.toLowerCase();
+      // Skip hidden, manifest, Windows system, or already-categorized folders
+      if (
+        entry.name.startsWith('.') ||
+        SmartOrganizer.PROTECTED_DIR_NAMES.has(lowerName) ||
+        categories.has(entry.name) ||
+        lowerName.startsWith('others_acer') ||
+        lowerName.startsWith('g-11.')
+      ) {
+        continue;
+      }
+
+      const folderCategory = this.determineFolderCategory(entry.name);
+      // Don't move a folder into itself
+      if (entry.name === folderCategory) {
+        categories.add(folderCategory);
+        continue;
+      }
+
+      const targetParentFolder = path.join(resolvedTarget, folderCategory);
+      const targetFolderPath = path.join(targetParentFolder, entry.name);
+
+      if (!options.dryRun) {
+        await fs.promises.mkdir(targetParentFolder, { recursive: true });
+        const safeDestination = this.getUniqueDestination(targetFolderPath);
+        await fs.promises.rename(path.join(resolvedTarget, entry.name), safeDestination);
+
+        moves.push({
+          originalPath: path.join(resolvedTarget, entry.name),
+          newPath: safeDestination,
+          filename: entry.name,
+          category: folderCategory,
+          type: 'folder',
+        });
+      } else {
+        moves.push({
+          originalPath: path.join(resolvedTarget, entry.name),
+          newPath: targetFolderPath,
+          filename: entry.name,
+          category: folderCategory,
+          type: 'folder',
+        });
+      }
+
+      categories.add(folderCategory);
     }
 
     // Save transactional undo manifest
@@ -101,13 +164,25 @@ export class SmartOrganizer {
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
     const manifestPath = path.join(manifestDir, `organizer-manifest-${timestamp}.json`);
 
+    const summaryDetails = Array.from(categories).map((c) => {
+      const items = moves.filter((m) => m.category === c).map((m) => `${m.type === 'folder' ? '📁 ' : ''}${m.filename}`);
+      return `  - ${c} (${items.length}): ${items.slice(0, 8).join(', ')}${items.length > 8 ? ' ...' : ''}`;
+    }).join('\n');
+
+    const summaryMessage = moves.length > 0
+      ? `Successfully organized ${moves.length} items in "${resolvedTarget}" (${dirEntries.length} folders, ${fileEntries.length} files scanned):\n${summaryDetails}`
+      : `Scanned ${fileEntries.length} files and ${dirEntries.length} folders in "${resolvedTarget}". All items are already cleanly structured.`;
+
     const result: OrganizeResult = {
       targetDirectory: resolvedTarget,
       totalFilesScanned: fileEntries.length,
-      filesMoved: moves.length,
+      totalFoldersScanned: dirEntries.length,
+      filesMoved: moves.filter((m) => m.type === 'file').length,
+      foldersMoved: moves.filter((m) => m.type === 'folder').length,
       categoriesCreated: Array.from(categories),
       manifestPath,
       moves,
+      summaryMessage,
     };
 
     if (!options.dryRun && moves.length > 0) {
@@ -115,6 +190,63 @@ export class SmartOrganizer {
     }
 
     return result;
+  }
+
+  /**
+   * Categorizes user folder names into logical domain topics.
+   */
+  private determineFolderCategory(folderName: string): string {
+    const fn = folderName.toLowerCase();
+
+    // Coding, Development, AI & Projects
+    if (
+      fn.includes('project') || fn.includes('ai-') || fn.includes('video') ||
+      fn.includes('post') || fn.includes('workflow') || fn.includes('portfolio') ||
+      fn.includes('dev') || fn.includes('code') || fn.includes('src') ||
+      fn.includes('repo') || fn.includes('bot') || fn.includes('agent') ||
+      fn.includes('automation') || fn.includes('robonuggets')
+    ) {
+      return 'Development_and_Projects';
+    }
+
+    // Studies, Exams, Assignments & Courses
+    if (
+      fn.includes('assignment') || fn.includes('internshala') || fn.includes('exam') ||
+      fn.includes('study') || fn.includes('course') || fn.includes('dbms') ||
+      fn.includes('college') || fn.includes('school') || fn.includes('lecture') ||
+      fn.includes('apk') || fn.includes('learn')
+    ) {
+      return 'Studies_and_Assignments';
+    }
+
+    // Archives & Backups
+    if (
+      fn.includes('archive') || fn.includes('backup') || fn.includes('7z') ||
+      fn.includes('zip') || fn.includes('rar') || fn.includes('tar') ||
+      fn.includes('old') || fn.includes('temp')
+    ) {
+      return 'Archives_and_Backups';
+    }
+
+    // Media & Audio / Music
+    if (
+      fn.includes('music') || fn.includes('audio') || fn.includes('song') ||
+      fn.includes('sound') || fn.includes('movie') || fn.includes('photo') ||
+      fn.includes('picture') || fn.includes('image')
+    ) {
+      return 'Media_and_Audio';
+    }
+
+    // Documents & Reports
+    if (
+      fn.includes('doc') || fn.includes('report') || fn.includes('paper') ||
+      fn.includes('pdf') || fn.includes('invoice') || fn.includes('bill') ||
+      fn.includes('tax') || fn.includes('receipt')
+    ) {
+      return 'Documents_and_Reports';
+    }
+
+    return 'Other_Folders';
   }
 
   /**

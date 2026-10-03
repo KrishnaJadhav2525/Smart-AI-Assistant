@@ -310,12 +310,9 @@ export class DesktopExecutor {
     }
     try {
       const result = await this.smartOrganizer.organizeDirectoryByContent(targetDir, { dryRun });
+      const totalMoved = result.filesMoved + (result.foldersMoved || 0);
       const summary = [
-        `Content-Aware Smart Organization completed for: ${result.targetDirectory}`,
-        `Total Files Scanned: ${result.totalFilesScanned}`,
-        `Files Categorized & Moved: ${result.filesMoved}`,
-        `Semantic Topic Folders Created (${result.categoriesCreated.length}):`,
-        ...result.categoriesCreated.map((c) => `  - ${c}`),
+        result.summaryMessage,
         result.manifestPath ? `Transactional Undo Manifest saved to: ${result.manifestPath}` : '',
       ].filter(Boolean).join('\n');
 
@@ -325,7 +322,7 @@ export class DesktopExecutor {
         output: summary,
         verification: {
           verified: true,
-          reason: `Organized ${result.filesMoved} files semantically into ${result.categoriesCreated.length} topic folders.`,
+          reason: `Organized ${totalMoved} items into ${result.categoriesCreated.length} topic categories.`,
         },
       };
     } catch (err: any) {
@@ -588,28 +585,30 @@ export class DesktopExecutor {
     }
 
     try {
-      if (process.platform === 'win32') {
-        const cmd = normalizedApp === 'notepad'
-          ? 'notepad.exe'
-          : normalizedApp === 'calc' || normalizedApp === 'calculator'
-          ? 'calc.exe'
-          : normalizedApp === 'explorer'
-          ? 'explorer.exe'
-          : 'code.cmd';
+      if (process.env.NODE_ENV !== 'test' && !process.env.VITEST) {
+        if (process.platform === 'win32') {
+          const cmd = normalizedApp === 'notepad'
+            ? 'notepad.exe'
+            : normalizedApp === 'calc' || normalizedApp === 'calculator'
+            ? 'calc.exe'
+            : normalizedApp === 'explorer'
+            ? 'explorer.exe'
+            : 'code.cmd';
 
-        const args = resolvedPath ? [resolvedPath] : [];
-        const proc = spawn(cmd, args, { detached: true, stdio: 'ignore' });
-        proc.unref();
-      } else if (process.platform === 'darwin') {
-        const appName = normalizedApp === 'notepad' ? 'TextEdit' : 'Calculator';
-        const args = resolvedPath ? ['-a', appName, resolvedPath] : ['-a', appName];
-        const proc = spawn('open', args, { detached: true, stdio: 'ignore' });
-        proc.unref();
-      } else {
-        const cmd = normalizedApp === 'notepad' ? 'gedit' : 'xdg-open';
-        const args = resolvedPath ? [resolvedPath] : [];
-        const proc = spawn(cmd, args, { detached: true, stdio: 'ignore' });
-        proc.unref();
+          const args = resolvedPath ? [resolvedPath] : [];
+          const proc = spawn(cmd, args, { detached: true, stdio: 'ignore' });
+          proc.unref();
+        } else if (process.platform === 'darwin') {
+          const appName = normalizedApp === 'notepad' ? 'TextEdit' : 'Calculator';
+          const args = resolvedPath ? ['-a', appName, resolvedPath] : ['-a', appName];
+          const proc = spawn('open', args, { detached: true, stdio: 'ignore' });
+          proc.unref();
+        } else {
+          const cmd = normalizedApp === 'notepad' ? 'gedit' : 'xdg-open';
+          const args = resolvedPath ? [resolvedPath] : [];
+          const proc = spawn(cmd, args, { detached: true, stdio: 'ignore' });
+          proc.unref();
+        }
       }
 
       return {
@@ -770,6 +769,9 @@ export class DesktopExecutor {
   }
 
   private spawnDesktopEditor(filePath: string): boolean {
+    if (process.env.NODE_ENV === 'test' || process.env.VITEST) {
+      return false;
+    }
     try {
       if (process.platform === 'win32') {
         const proc = spawn('notepad.exe', [filePath], { detached: true, stdio: 'ignore' });
