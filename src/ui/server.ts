@@ -10,6 +10,7 @@ import { OpenRouterClient } from '../llm/OpenRouterClient.js';
 import { SecurityPolicy } from '../security/SecurityPolicy.js';
 import { AgentLoop, type AgentStepRecord, type AgentRunResult } from '../agent/AgentLoop.js';
 import { getDashboardHtml } from './dashboard.js';
+import { WhisperService } from '../services/WhisperService.js';
 import {
   saveChatSession,
   getChatSession,
@@ -28,6 +29,8 @@ export function startDashboardServer(options: ServerOptions = {}): http.Server {
   const openBrowser = options.openBrowser ?? (process.env.NODE_ENV !== 'production');
 
   initializeDefaultChat();
+
+  const whisperService = WhisperService.getInstance();
 
   let activeAgentLoop: AgentLoop | null = null;
   let activeBrowserManager: BrowserManager | null = null;
@@ -218,6 +221,61 @@ export function startDashboardServer(options: ServerOptions = {}): http.Server {
         } catch {
           res.writeHead(400, { 'Content-Type': 'application/json' });
           res.end(JSON.stringify({ error: 'Invalid approval request' }));
+        }
+      });
+      return;
+    }
+
+    // 7. Speech-to-Text Transcription APIs (faster-whisper small.en)
+    if (pathname === '/api/transcribe/status' && req.method === 'GET') {
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({
+        available: true,
+        model: 'small.en',
+        ready: whisperService.isReady(),
+      }));
+      return;
+    }
+
+    if (pathname === '/api/transcribe' && req.method === 'POST') {
+      const chunks: Buffer[] = [];
+      req.on('data', (chunk) => chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk)));
+      req.on('end', async () => {
+        try {
+          const rawBuffer = Buffer.concat(chunks);
+          let audioBuffer: Buffer;
+
+          const contentType = req.headers['content-type'] || '';
+          if (contentType.includes('application/json')) {
+            const bodyStr = rawBuffer.toString('utf-8');
+            const parsed = JSON.parse(bodyStr || '{}');
+            if (!parsed.audioBase64) {
+              res.writeHead(400, { 'Content-Type': 'application/json' });
+              res.end(JSON.stringify({ error: 'Missing audioBase64 field' }));
+              return;
+            }
+            audioBuffer = Buffer.from(parsed.audioBase64, 'base64');
+          } else {
+            audioBuffer = rawBuffer;
+          }
+
+          if (audioBuffer.length === 0) {
+            res.writeHead(400, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: 'Empty audio payload' }));
+            return;
+          }
+
+          const result = await whisperService.transcribeAudio(audioBuffer);
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({
+            ok: true,
+            text: result.text,
+            latencyMs: result.latencyMs,
+            duration: result.duration,
+          }));
+        } catch (err: any) {
+          res.writeHead(500, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: err?.message || 'Transcription failed' }));
         }
       });
       return;
