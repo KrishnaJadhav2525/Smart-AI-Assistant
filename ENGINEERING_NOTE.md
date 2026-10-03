@@ -21,6 +21,8 @@ Rather than a toy browser script or a naive prompt wrapper, the operator feature
 6. **Verified Completion & Evidence:** Audits the application's resulting ledger state and outputs machine-readable verification evidence (`data/outputs/reconciliation-report.json`) and audit summaries.
 7. **Human Control:** Provides continuous progress monitoring via Server-Sent Events (SSE), a Pause/Resume execution state machine, and a Supervisor Approval Gate that halts high-risk operations for explicit human authorization.
 8. **Desktop & Local Application Operations:** Beyond browser tasks, features an integrated `DesktopExecutor` enabling the operator to operate native desktop tools (Notepad, File Explorer), record structured research notes live into Notepad (`desktop_write_note`), and safely ingest local business files (`file_read`).
+9. **100% Offline Speech Recognition Pipeline:** Active Voice Listening triggered via microphone tap in the Web Studio, utilizing local `faster-whisper` (`small.en`) with client-side Web Audio dynamic VAD, 768ms FIFO pre-roll buffering, and persistent Python daemon IPC.
+10. **Content-Aware File Organization & Semantic Folder Renaming:** Operates deep head/tail content inspections across documents, PDF text streams, and CSV tables via `FileInspector`, clusters files into domain topics (`AWS_Invoices`, `Tax_and_Compliance`, `Resumes_and_Careers`), renames folders based on content consensus, and logs transactional rollback manifests (`organizer-manifest-*.json`).
 
 ---
 

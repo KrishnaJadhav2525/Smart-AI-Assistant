@@ -3,7 +3,7 @@
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.8-blue.svg)](https://www.typescriptlang.org/)
 [![Playwright](https://img.shields.io/badge/Playwright-Chromium-green.svg)](https://playwright.dev/)
 [![OpenRouter](https://img.shields.io/badge/OpenRouter-API-purple.svg)](https://openrouter.ai/)
-[![Tests](https://img.shields.io/badge/Vitest-22%2F22%20Passing-brightgreen.svg)]()
+[![Tests](https://img.shields.io/badge/Vitest-28%2F28%20Passing-brightgreen.svg)]()
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Author](https://img.shields.io/badge/Author-Krishna-6366f1.svg)]()
 
@@ -74,10 +74,24 @@ Web pages are dynamic. BrowserAgent incorporates snapshot versioning (e.g. `v1:e
 
 ### 8. 💻 Desktop Application & Research Note Operations
 Beyond browser automation, BrowserAgent operates as a full hybrid **Computer Operator**:
-- **`desktop_write_note` (Notepad Scratchpad):** Formats research summaries, discrepancy logs, or audit findings into `data/outputs/` and automatically launches desktop Notepad to display notes live to the user.
+- **`desktop_write_note` (Notepad Scratchpad):** Formats research summaries, discrepancy logs, or audit findings into `data/outputs/` and displays notes to the user.
 - **`desktop_launch_app`:** Launches authorized desktop utilities (`notepad`, `calc`, `explorer`).
 - **`desktop_reveal_file`:** Opens the desktop file manager (Windows File Explorer) with the generated report or output artifact highlighted.
 - **`file_read`:** Safely reads local project data files (JSON, CSV, text) within workspace boundaries to cross-reference data against web portals.
+- **`file_list_directory`:** Inspects directories and drives (e.g. `D:\`) to discover local files and folder structures.
+
+### 9. 📁 Content-Aware File Organization & Semantic Folder Renaming
+Unlike basic file sorters that only check filename extensions, BrowserAgent features a deep semantic inspection and organization engine:
+- **`FileInspector` (Deep Content Sampling):** Reads head/tail snippets, parsed PDF text streams, CSV column headers, and entities to uncover real document intent.
+- **`file_organize_smart`:** Intelligently groups files by business topic (`AWS_Invoices`, `Tax_and_Compliance`, `Resumes_and_Careers`, `Healthcare_and_Research`) rather than generic `Documents/` or `Images/` folders.
+- **`file_rename_folder_by_content`:** Inspects all documents inside a folder, calculates the dominant topic consensus, and renames the folder on disk to match its actual contents.
+- **Transactional Undo Reversibility (`file_undo_organize`):** Emits machine-readable manifests (`data/outputs/organizer-manifest-<timestamp>.json`) with one-click full rollback capability.
+
+### 10. 🎙 100% Offline Active Voice Listening Pipeline (`faster-whisper` `small.en`)
+Zero cloud audio latency, 100% local privacy:
+- **Dynamic VAD:** Real-time Web Audio API energy analysis with adaptive background noise calibration.
+- **Zero Consonant Clipping:** Pre-roll circular audio buffer (768ms) captures speech onset before speech threshold trigger.
+- **Persistent Python STT Daemon:** Node controller keeps a pre-warmed `faster-whisper` `small.en` worker in memory via stdin/stdout IPC, achieving near-instantaneous transcription without model cold starts.
 
 ---
 
