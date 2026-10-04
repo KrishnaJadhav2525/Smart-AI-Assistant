@@ -345,19 +345,19 @@ export function getDashboardHtml(): string {
         <div class="p-4 bg-light-bg dark:bg-gpt-dark border-t border-light-border dark:border-gpt-border relative z-30 flex-shrink-0">
           <div id="inputInner" class="max-w-3xl mx-auto space-y-2 relative z-30 transition-all duration-300">
             
-            <!-- Quick Action Chips (HulChul Scenarios & Local Tools) -->
+            <!-- Quick Action Chips (Selenium Form, Variations, and Local Tools) -->
             <div class="flex items-center gap-2 overflow-x-auto pb-1 text-xs no-scrollbar relative z-30">
-              <button type="button" class="quick-chip cursor-pointer relative z-30 whitespace-nowrap px-3 py-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 hover:bg-emerald-500/20 transition-colors flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400 font-medium" onclick="window.fillChip('File invoice INV-2026-001 into Enterprise Operations portal', 'http://localhost:3000/app')">
-                <span>📋</span> Domestic Batch (Scenario A)
+              <button type="button" class="quick-chip cursor-pointer relative z-30 whitespace-nowrap px-3 py-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 hover:bg-emerald-500/20 transition-colors flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400 font-medium" onclick="window.fillChip('fill out text input with Krishna, enter password, type notes in textarea, select dropdown option Two, and submit the form', 'https://www.selenium.dev/selenium/web/web-form.html')">
+                <span>📝</span> Selenium Web Form (Base Task)
               </button>
-              <button type="button" class="quick-chip cursor-pointer relative z-30 whitespace-nowrap px-3 py-1.5 rounded-full border border-blue-500/30 bg-blue-500/10 hover:bg-blue-500/20 transition-colors flex items-center gap-1.5 text-blue-600 dark:text-blue-400 font-medium" onclick="window.fillChip('File international invoice INV-2026-INTL-1 with VAT exemption for 1250 EUR', 'http://localhost:3000/app')">
-                <span>🌍</span> International VAT (Variation B)
-              </button>
-              <button type="button" class="quick-chip cursor-pointer relative z-30 whitespace-nowrap px-3 py-1.5 rounded-full border border-amber-500/30 bg-amber-500/10 hover:bg-amber-500/20 transition-colors flex items-center gap-1.5 text-amber-600 dark:text-amber-400 font-medium" onclick="window.fillChip('Recover from validation error and reconcile invoice INV-2026-RECOV-01 for $1,850', 'http://localhost:3000/app')">
-                <span>⚠️</span> Error Self-Correction (Scenario C)
+              <button type="button" class="quick-chip cursor-pointer relative z-30 whitespace-nowrap px-3 py-1.5 rounded-full border border-blue-500/30 bg-blue-500/10 hover:bg-blue-500/20 transition-colors flex items-center gap-1.5 text-blue-600 dark:text-blue-400 font-medium" onclick="window.fillChip('fill out text input with variation data AI-Engineer-2026, enter secret password, pick dropdown option Three, and submit', 'https://www.selenium.dev/selenium/web/web-form.html')">
+                <span>🌍</span> Web Form Variation
               </button>
               <button type="button" class="quick-chip cursor-pointer relative z-30 whitespace-nowrap px-3 py-1.5 rounded-full border border-purple-500/30 bg-purple-500/10 hover:bg-purple-500/20 transition-colors flex items-center gap-1.5 text-purple-600 dark:text-purple-400 font-medium" onclick="window.fillChip('Open camera app')">
                 <span>📷</span> Launch Camera (Local)
+              </button>
+              <button type="button" class="quick-chip cursor-pointer relative z-30 whitespace-nowrap px-3 py-1.5 rounded-full border border-amber-500/30 bg-amber-500/10 hover:bg-amber-500/20 transition-colors flex items-center gap-1.5 text-amber-600 dark:text-amber-400 font-medium" onclick="window.fillChip('Organize folders in Drive D based on content')">
+                <span>📁</span> Organize Drive D
               </button>
               <button type="button" class="quick-chip cursor-pointer relative z-30 whitespace-nowrap px-3 py-1.5 rounded-full border border-light-border dark:border-gpt-border bg-light-card dark:bg-gpt-card hover:bg-emerald-500/10 transition-colors flex items-center gap-1.5 text-light-muted dark:text-gpt-muted hover:text-emerald-400" onclick="window.fillChip('search for tickets from chennai to vellore', 'https://www.google.com')">
                 <span>🚌</span> Chennai to Vellore Tickets
@@ -1665,16 +1665,26 @@ export function getDashboardHtml(): string {
       });
     };
 
-    window.stopVoiceListening = function(finalize) {
+    window.stopVoiceListening = function(finalize, skipInputUpdate) {
       if (finalize && window.voiceState.isSpeaking) {
         window.finalizeAndSendAudio();
       }
 
       window.voiceState.isListening = false;
+      window.voiceState.isSpeaking = false;
+      window.voiceState.hasLiveWebSpeech = false;
+      window.voiceState.silenceStartTime = 0;
+      window.voiceState.speechStartTime = 0;
+
       if (window.voiceState.recognition) {
         try {
           window.voiceState.recognition.onend = null;
+          window.voiceState.recognition.onerror = null;
+          window.voiceState.recognition.onresult = null;
           window.voiceState.recognition.stop();
+          if (window.voiceState.recognition.abort) {
+            window.voiceState.recognition.abort();
+          }
         } catch(e) {}
         window.voiceState.recognition = null;
       }
@@ -1697,13 +1707,21 @@ export function getDashboardHtml(): string {
         window.voiceState.audioContext = null;
       }
 
-      // Finalize text in prompt input and place cursor at end
-      window.updateLiveTranscribingInput();
-      var promptInput = document.getElementById('taskPromptInput');
-      if (promptInput) {
-        promptInput.focus();
-        promptInput.selectionStart = promptInput.selectionEnd = promptInput.value.length;
+      if (!skipInputUpdate) {
+        // Finalize text in prompt input and place cursor at end
+        window.updateLiveTranscribingInput();
+        var promptInput = document.getElementById('taskPromptInput');
+        if (promptInput) {
+          promptInput.focus();
+          promptInput.selectionStart = promptInput.selectionEnd = promptInput.value.length;
+        }
       }
+
+      window.voiceState.finalTranscript = '';
+      window.voiceState.interimTranscript = '';
+      window.voiceState.basePromptText = '';
+      window.voiceState.speechBuffer = [];
+      window.voiceState.preRollBuffer = [];
 
       window.updateVoiceUI(false);
     };
@@ -2345,6 +2363,9 @@ export function getDashboardHtml(): string {
     };
 
     window.onRunStart = function(d) {
+      if (window.voiceState && (window.voiceState.isListening || window.voiceState.recognition || window.voiceState.mediaStream)) {
+        window.stopVoiceListening(false, true);
+      }
       window.setRunningUI(true);
       window.state.stepCount = 0;
       window.state.startTime = Date.now();
@@ -2499,6 +2520,11 @@ export function getDashboardHtml(): string {
     };
 
     window.executeTaskRun = function() {
+      // 1. Immediately stop voice recognition and reset audio indicators upon sending task
+      if (window.voiceState && (window.voiceState.isListening || window.voiceState.recognition || window.voiceState.mediaStream)) {
+        window.stopVoiceListening(false, true);
+      }
+
       if (window.state.isRunning) {
         fetch('/api/stop', { method: 'POST' })
           .then(function() { window.showToast('Stopping agent run...'); });
