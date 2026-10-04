@@ -31,8 +31,10 @@ coverage/
 
 # Video Recording & Local Presentation Materials
 VIDEO_TRANSCRIPT.md
+DEMO_SCRIPT.md
 *transcript*.md
-*video_script*.md
+*script*.md
+*demo*.md
 
 # System Files
 .DS_Store

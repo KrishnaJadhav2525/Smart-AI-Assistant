@@ -172,9 +172,8 @@ sequenceDiagram
 
 This repository contains the complete implementation for the **HulChul AI Engineering Internship Build Assignment**.
 
-Detailed documentation:
-- 📄 **[ENGINEERING_NOTE.md](./ENGINEERING_NOTE.md)**: Architecture trade-offs, AI tool disclosures, personal engineering ownership, limitations, and future roadmap.
-- 🎬 **[DEMO_SCRIPT.md](./DEMO_SCRIPT.md)**: 5-minute video recording guide and timestamped walkthrough.
+Detailed engineering documentation:
+- 📄 **[ENGINEERING_NOTE.md](./ENGINEERING_NOTE.md)**: Architectural choices, AI tool disclosures, personal engineering ownership, system limitations, and production roadmap.
 
 ### 🌟 Business Scenario: Enterprise Invoice & Expense Reconciliation
 
