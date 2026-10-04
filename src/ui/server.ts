@@ -130,6 +130,16 @@ export function startDashboardServer(options: ServerOptions = {}): http.Server {
       return;
     }
 
+    // 2b. Serve Enterprise Operations ERP Portal at /app and /portal
+    if (pathname === '/app' || pathname === '/portal') {
+      const fixturePath = path.resolve(process.cwd(), 'tests', 'fixtures', 'business-portal.html');
+      if (fs.existsSync(fixturePath)) {
+        res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+        fs.createReadStream(fixturePath).pipe(res);
+        return;
+      }
+    }
+
     // 3. API: Get Models
     if (pathname === '/api/models' && req.method === 'GET') {
       const models = [
