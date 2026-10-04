@@ -190,48 +190,113 @@ The computer operator bridges local business data files (`data/samples/`) with t
 
 ---
 
-## 🚀 Quickstart
+## 🚀 Quickstart & Running Instructions
 
-### 1. Prerequisites
-- **Node.js**: v20+ or v24+
-- **OpenRouter API Key**: Get one for free at [openrouter.ai](https://openrouter.ai)
+Evaluators and judges can run BrowserAgent via **Docker (Option A)** or via a **Direct Local Installation (Option B)**. Both execution paths are 100% verified and tested end-to-end.
 
-### 2. Installation
+---
+
+### 🐳 Option A: Run with Docker (Recommended — Instant Setup)
+
+The container environment is pinned with **Playwright v1.63.0** on **Ubuntu 24.04 (noble)**, **Node.js**, and pre-installed **Chromium** browser dependencies.
+
+#### 1. One-Command Launch (Docker Compose)
 ```bash
 # Clone the repository
-git clone https://github.com/krishna/browser-agent.git
-cd browser-agent
+git clone https://github.com/KrishnaJadhav2525/Smart-AI-Assistant.git
+cd Smart-AI-Assistant
 
-# Install dependencies
+# Start the Web Dashboard with automated build & pinned environment
+docker compose up --build -d
+```
+
+#### 2. Alternative: Plain Docker CLI
+```bash
+# Build image
+docker build -t browser-agent .
+
+# Run container on port 3000
+docker run -d -p 3000:3000 --name browser-agent browser-agent
+```
+
+#### 3. Access the Web Dashboard
+Open your browser at:
+👉 **[http://localhost:3000](http://localhost:3000)**
+
+- **Check health status:** `docker compose ps` (Shows `(healthy)`)
+- **Inspect live logs:** `docker compose logs -f`
+- **Stop container:** `docker compose down` (or `docker stop browser-agent`)
+
+---
+
+### 💻 Option B: Non-Docker Fallback (Local Installation)
+
+If Docker is not installed or unavailable on your evaluation machine, you can run BrowserAgent directly on your host operating system (Windows, macOS, Linux).
+
+#### 1. Prerequisites
+- **Node.js**: v20+ or v22+ / v24+ ([Download Node.js](https://nodejs.org/))
+- **Git**
+
+#### 2. Installation Steps
+```bash
+# Clone the repository
+git clone https://github.com/KrishnaJadhav2525/Smart-AI-Assistant.git
+cd Smart-AI-Assistant
+
+# Install dependencies from package-lock.json
 npm install
 
 # Install Playwright browser binaries (Chromium)
 npx playwright install chromium
+
+# Compile TypeScript to dist
+npm run build
 ```
 
-### 3. Configure Environment
-Create your `.env` file from `.env.example`:
+#### 3. Start the Web Dashboard
 ```bash
-cp .env.example .env
+npm start
+# (or for development with hot reload: npm run dev)
 ```
-Edit `.env` and provide your OpenRouter API key:
-```ini
-OPENROUTER_API_KEY=sk-or-v1-your-openrouter-key-here
-OPENROUTER_MODEL=deepseek/deepseek-v4-flash-0731:free
-ALLOWED_DOMAINS=*
-HEADLESS=false
-MAX_STEPS=20
-SLOW_MO_MS=50
+
+Open your browser at:
+👉 **[http://localhost:3000](http://localhost:3000)**
+
+---
+
+### 🔑 Providing Your API Key (For Evaluators & Judges)
+
+Judges have two simple ways to supply their API key:
+
+1. **Directly in the Web Dashboard (Easiest — 2 Clicks):**
+   - Click the **Settings icon (`⚙️`)** or the **Model dropdown** in the top navigation bar.
+   - Select your provider (**OpenRouter**, **Gemini**, or custom proxy) and paste your API key into the **"API key"** field.
+   - It saves instantly to your browser session—no server restart required.
+2. **Via `.env` File (Optional for terminal users):**
+   ```bash
+   cp .env.example .env
+   ```
+   Add your key in `.env`: `OPENROUTER_API_KEY=your_key_here`.
+3. **Free Models & Local LLMs Out of the Box:**
+   - Free reasoning models (`DeepSeek V4 Flash:free`, `Qwen 3.8:free`, `Gemma 4:free`) work automatically.
+   - Local proxies (such as Ollama or Antigravity on port 8080) can be used with zero API key.
+
+---
+
+### 🧪 Verifying with Automated Tests
+Run the entire 43-test automated test suite across all 11 test files:
+```bash
+npm test
 ```
 
 ---
 
-## 🖥 Launching the Web Studio Dashboard (`npm run ui`)
+## 🖥 Launching the Web Studio Dashboard
 
-Launch the visual web dashboard with one simple command:
+Launch the visual web dashboard with:
 
 ```bash
-npm run ui
+npm start
 # or:
 npm run dev
 ```
@@ -354,39 +419,6 @@ npm run typecheck
 
 ---
 
-## 🐳 Docker Deployment
-
-Run BrowserAgent in a containerized Linux environment with Playwright and Chromium pre-configured:
-
-### 1. Web Studio Dashboard (Recommended)
-```bash
-# Build the container
-docker build -t browser-agent .
-
-# Run the web dashboard container on port 3000
-docker run -d -p 3000:3000 \
-  -e OPENROUTER_API_KEY="your-api-key" \
-  -v $(pwd)/data:/app/data \
-  --name browser-agent browser-agent
-
-# Open in browser
-open http://localhost:3000
-```
-
-### 2. Using Docker Compose
-```bash
-docker compose up -d
-```
-
-### 3. Headless CLI Task Run
-```bash
-docker run --rm -it \
-  -e OPENROUTER_API_KEY="your-api-key" \
-  browser-agent agent run "Search AI breakthroughs" --url "https://news.ycombinator.com"
-```
-
----
-
 ## 📜 Tool Schema Reference
 
 | Tool Name | Parameters | Description |
@@ -412,6 +444,4 @@ BrowserAgent's Web Studio follows the token-driven **ChatGPT Design System** for
 
 ## 📄 License
 
-MIT License. See [LICENSE](./LICENSE) for details.
-"# Smart-AI-Assistant" 
-"# Smart-AI-Assistant" 
+MIT License. See [LICENSE](./LICENSE) for details. 

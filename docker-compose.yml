@@ -1,11 +1,14 @@
 services:
   browser-agent:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: browser-agent:latest
     container_name: browser-agent
     ports:
       - "${PORT:-3000}:3000"
     environment:
-      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY:-}
       - OPENROUTER_MODEL=${OPENROUTER_MODEL:-deepseek/deepseek-v4-flash-0731:free}
       - ALLOWED_DOMAINS=${ALLOWED_DOMAINS:-*}
       - HEADLESS=true
@@ -15,4 +18,10 @@ services:
       - ./data:/app/data
       - ./.sessions:/app/.sessions
       - ./screenshots:/app/screenshots
+    healthcheck:
+      test: ["CMD-SHELL", "node -e 'require(\"http\").get(\"http://localhost:3000/api/models\", (r) => process.exit(r.statusCode === 200 ? 0 : 1))'"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
     restart: unless-stopped

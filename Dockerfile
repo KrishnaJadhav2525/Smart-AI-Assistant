@@ -1,17 +1,24 @@
-FROM mcr.microsoft.com/playwright:v1.50.1-noble
+# Pinned official Playwright image matching playwright@1.63.0 in package-lock.json
+FROM mcr.microsoft.com/playwright:v1.63.0-noble
 
 WORKDIR /app
 
-# Copy dependency specifications
+# Ensure python symlink exists for python3
+RUN ln -sf /usr/bin/python3 /usr/bin/python
+
+# Copy dependency specifications for cached layer installation
 COPY package*.json tsconfig.json ./
 
-# Install dependencies
+# Install exact pinned dependencies from package-lock.json
 RUN npm ci
 
-# Copy source code and static assets
+# Ensure Playwright browser binaries and Linux dependencies are completely installed
+RUN npx playwright install --with-deps chromium
+
+# Copy application source code and static assets
 COPY . .
 
-# Build TypeScript to dist
+# Build TypeScript to production dist
 RUN npm run build
 
 # Default environment variables

@@ -4,8 +4,16 @@ dist
 .sessions
 .env
 .env.local
+.env.*.local
 *.log
 npm-debug.log*
 .DS_Store
 screenshots/*.png
 screenshots/*.jpg
+coverage
+.vscode
+.idea
+.zcode
+.aider-desk
+.agents
+.venv
