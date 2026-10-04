@@ -281,6 +281,18 @@ export function getDashboardHtml(): string {
 
       <!-- Right Actions -->
       <div class="flex items-center gap-2">
+        <!-- Stop Ongoing Task Header Button (Prominent when running) -->
+        <button type="button" id="headerStopTaskBtn" onclick="window.stopCurrentTask()" class="hidden px-3 py-1.5 rounded-xl bg-rose-500 hover:bg-rose-600 text-white text-xs font-bold transition-all shadow-md flex items-center gap-1.5 cursor-pointer animate-pulse" title="Stop Ongoing Task">
+          <span class="w-2.5 h-2.5 rounded-sm bg-white inline-block"></span>
+          <span>Stop Task</span>
+        </button>
+
+        <!-- Delete Active Chat Header Button -->
+        <button type="button" id="headerDeleteChatBtn" onclick="window.deleteCurrentChat()" class="hidden px-2.5 py-1 rounded-xl text-zinc-400 hover:text-rose-400 hover:bg-rose-500/10 border border-transparent hover:border-rose-500/30 text-xs font-medium transition-colors flex items-center gap-1.5 cursor-pointer" title="Delete current chat">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+          <span class="hidden sm:inline">Delete Chat</span>
+        </button>
+
         <div class="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-light-card/80 dark:bg-gpt-card border border-light-border dark:border-gpt-border text-xs font-mono">
           <span class="flex items-center gap-1 text-light-muted dark:text-gpt-muted">
             <span class="text-emerald-500 font-bold">#</span>
@@ -387,7 +399,13 @@ export function getDashboardHtml(): string {
                     <span id="pauseIcon" class="text-xs font-bold font-mono">⏸</span>
                   </button>
 
-                  <!-- Run / Stop Button -->
+                  <!-- Explicit Stop Ongoing Task Button -->
+                  <button type="button" id="stopOngoingTaskBtn" onclick="window.stopCurrentTask()" class="hidden px-3.5 py-1.5 rounded-full bg-rose-500 hover:bg-rose-600 text-white font-semibold text-xs transition-all shadow-md flex items-center gap-1.5 cursor-pointer relative z-30 animate-pulse" title="Stop Ongoing Task">
+                    <span class="w-2.5 h-2.5 rounded-sm bg-white inline-block"></span>
+                    <span>Stop Task</span>
+                  </button>
+
+                  <!-- Run / Send Button -->
                   <button type="button" id="runAgentBtn" onclick="window.executeTaskRun()" class="w-9 h-9 rounded-full bg-emerald-500 hover:bg-emerald-400 text-white flex items-center justify-center transition-all shadow-md cursor-pointer relative z-30" title="Send / Run Task">
                     <svg id="runIcon" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 12h14M12 5l7 7-7 7"/></svg>
                     <svg id="stopIcon" class="w-4 h-4 hidden" fill="currentColor" viewBox="0 0 24 24"><rect x="5" y="5" width="14" height="14" rx="2"/></svg>
@@ -1740,6 +1758,61 @@ export function getDashboardHtml(): string {
       window.loadChatSession(chatId);
     };
 
+    window.deleteChat = function(chatId, event) {
+      if (event) {
+        event.stopPropagation();
+        event.preventDefault();
+      }
+      if (!chatId) return;
+      if (!confirm('Are you sure you want to delete this chat session?')) return;
+
+      fetch('/api/chats/' + encodeURIComponent(chatId), {
+        method: 'DELETE'
+      })
+      .then(function(res) { return res.json(); })
+      .then(function(data) {
+        window.showToast('🗑️ Chat session deleted');
+        if (window.state.currentChatId === chatId) {
+          window.state.currentChatId = null;
+          window.prepareNewTask();
+          if (window.location.pathname.indexOf('/chat/agent/') !== -1) {
+            history.pushState({}, '', '/');
+          }
+        }
+        window.loadRecentChats();
+      })
+      .catch(function(err) {
+        window.showToast('Failed to delete chat: ' + err.message);
+      });
+    };
+
+    window.deleteCurrentChat = function() {
+      var curId = window.state.currentChatId;
+      if (!curId) {
+        var curPath = window.location.pathname;
+        if (curPath.indexOf('/chat/agent/') !== -1) {
+          curId = curPath.split('/chat/agent/')[1].split('/')[0];
+        }
+      }
+      if (!curId) {
+        window.showToast('No active chat session selected.');
+        return;
+      }
+      window.deleteChat(curId);
+    };
+
+    window.stopCurrentTask = function() {
+      fetch('/api/stop', { method: 'POST' })
+        .then(function(res) { return res.json(); })
+        .then(function() {
+          window.setRunningUI(false);
+          window.showToast('🛑 Ongoing task stopped by user');
+        })
+        .catch(function(err) {
+          window.showToast('Failed to stop task: ' + err.message);
+        });
+    };
+
     window.loadRecentChats = function() {
       fetch('/api/chats')
         .then(function(res) { return res.json(); })
@@ -1749,23 +1822,49 @@ export function getDashboardHtml(): string {
           if (!list) return;
           list.innerHTML = '';
           var curPath = window.location.pathname;
-          var curId = curPath.indexOf('/chat/agent/') !== -1 ? curPath.split('/chat/agent/')[1].split('/')[0] : '';
+          var curId = curPath.indexOf('/chat/agent/') !== -1 ? curPath.split('/chat/agent/')[1].split('/')[0] : (window.state.currentChatId || '');
 
           data.chats.forEach(function(chat) {
-            var btn = document.createElement('button');
-            btn.type = 'button';
+            var row = document.createElement('div');
             var isActive = (chat.id === curId);
-            btn.className = 'history-item cursor-pointer w-full flex items-center justify-between px-3 py-2 rounded-lg text-left transition-colors group ' +
+            row.className = 'history-row group flex items-center justify-between px-2.5 py-1.5 rounded-xl transition-all ' +
               (isActive ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 font-semibold' : 'text-light-muted dark:text-gpt-muted hover:bg-light-card dark:hover:bg-gpt-card hover:text-light-text dark:hover:text-gpt-text');
-            btn.innerHTML = '<div class="flex items-center gap-2 truncate">' +
-              '<span class="text-xs">' + (chat.status === 'completed' ? '✅' : chat.status === 'running' ? '⏳' : '⚡') + '</span>' +
-              '<span class="truncate">' + window.esc(chat.goal) + '</span>' +
-              '</div>' +
-              (isActive ? '<span class="w-1.5 h-1.5 rounded-full bg-emerald-500 flex-shrink-0"></span>' : '');
-            btn.onclick = function() {
+
+            // Left clickable area to load chat
+            var openBtn = document.createElement('button');
+            openBtn.type = 'button';
+            openBtn.className = 'flex-1 flex items-center gap-2 truncate text-left cursor-pointer mr-1.5 min-w-0';
+            openBtn.innerHTML =
+              '<span class="text-xs flex-shrink-0">' + (chat.status === 'completed' ? '✅' : chat.status === 'running' ? '⏳' : '⚡') + '</span>' +
+              '<span class="truncate text-xs">' + window.esc(chat.goal) + '</span>';
+            openBtn.onclick = function() {
               window.openChat(chat.id);
             };
-            list.appendChild(btn);
+
+            // Right actions: active indicator & delete chat button
+            var rightBox = document.createElement('div');
+            rightBox.className = 'flex items-center gap-1 flex-shrink-0';
+
+            if (isActive) {
+              var dot = document.createElement('span');
+              dot.className = 'w-1.5 h-1.5 rounded-full bg-emerald-500 flex-shrink-0 mr-0.5';
+              rightBox.appendChild(dot);
+            }
+
+            // Delete chat icon button (visible on group hover or active)
+            var delBtn = document.createElement('button');
+            delBtn.type = 'button';
+            delBtn.className = 'p-1 rounded-lg text-zinc-400 hover:text-rose-500 hover:bg-rose-500/20 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer';
+            delBtn.title = 'Delete chat session';
+            delBtn.innerHTML = '<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>';
+            delBtn.onclick = function(e) {
+              window.deleteChat(chat.id, e);
+            };
+            rightBox.appendChild(delBtn);
+
+            row.appendChild(openBtn);
+            row.appendChild(rightBox);
+            list.appendChild(row);
           });
         })
         .catch(function() {});
@@ -1886,6 +1985,9 @@ export function getDashboardHtml(): string {
             window.switchCanvasTab('result');
           }
 
+          var headerDeleteBtn = document.getElementById('headerDeleteChatBtn');
+          if (headerDeleteBtn) headerDeleteBtn.classList.remove('hidden');
+
           window.loadRecentChats();
           window.showToast('Loaded chat session');
         })
@@ -1902,6 +2004,9 @@ export function getDashboardHtml(): string {
       window.state.stepCount = 0;
       window.state.isRunning = false;
       window.setRunningUI(false);
+
+      var headerDeleteBtn = document.getElementById('headerDeleteChatBtn');
+      if (headerDeleteBtn) headerDeleteBtn.classList.add('hidden');
 
       var input = document.getElementById('taskPromptInput');
       if (input) {
@@ -2192,21 +2297,36 @@ export function getDashboardHtml(): string {
       var stopIcon = document.getElementById('stopIcon');
       var pulse = document.getElementById('agentStatusLabel');
       var pulseDot = document.getElementById('agentStatusPulse');
+      var headerStopBtn = document.getElementById('headerStopTaskBtn');
+      var stopOngoingBtn = document.getElementById('stopOngoingTaskBtn');
+      var headerDeleteBtn = document.getElementById('headerDeleteChatBtn');
 
-      if (!btn) return;
       if (running) {
+        if (headerStopBtn) headerStopBtn.classList.remove('hidden');
+        if (stopOngoingBtn) stopOngoingBtn.classList.remove('hidden');
+        if (headerDeleteBtn) headerDeleteBtn.classList.add('hidden');
         if (runIcon) runIcon.classList.add('hidden');
         if (stopIcon) stopIcon.classList.remove('hidden');
-        btn.classList.remove('bg-emerald-500', 'hover:bg-emerald-400');
-        btn.classList.add('bg-rose-500', 'hover:bg-rose-400');
+        if (btn) {
+          btn.classList.remove('bg-emerald-500', 'hover:bg-emerald-400');
+          btn.classList.add('bg-rose-500', 'hover:bg-rose-400');
+        }
         if (pauseBtn) pauseBtn.classList.remove('hidden');
         if (pulse) pulse.textContent = window.state.isPaused ? 'Paused' : 'Running...';
         if (pulseDot) pulseDot.innerHTML = '<span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span><span class="relative inline-flex rounded-full h-2 w-2 bg-rose-500"></span>';
       } else {
+        if (headerStopBtn) headerStopBtn.classList.add('hidden');
+        if (stopOngoingBtn) stopOngoingBtn.classList.add('hidden');
+        if (headerDeleteBtn) {
+          if (window.state.currentChatId) headerDeleteBtn.classList.remove('hidden');
+          else headerDeleteBtn.classList.add('hidden');
+        }
         if (stopIcon) stopIcon.classList.add('hidden');
         if (runIcon) runIcon.classList.remove('hidden');
-        btn.classList.remove('bg-rose-500', 'hover:bg-rose-400');
-        btn.classList.add('bg-emerald-500', 'hover:bg-emerald-400');
+        if (btn) {
+          btn.classList.remove('bg-rose-500', 'hover:bg-rose-400');
+          btn.classList.add('bg-emerald-500', 'hover:bg-emerald-400');
+        }
         if (pauseBtn) pauseBtn.classList.add('hidden');
         window.state.isPaused = false;
         window.updatePauseUI(false);

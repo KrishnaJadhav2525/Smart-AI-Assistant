@@ -15,6 +15,7 @@ import {
   saveChatSession,
   getChatSession,
   listChatSessions,
+  deleteChatSession,
   initializeDefaultChat,
   type ChatSession,
 } from './chatStorage.js';
@@ -169,6 +170,22 @@ export function startDashboardServer(options: ServerOptions = {}): http.Server {
         res.writeHead(404, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ error: 'Chat not found' }));
       }
+      return;
+    }
+
+    // 5b. API: Delete Chat Session by ID
+    if (pathname.startsWith('/api/chats/') && (req.method === 'DELETE' || (req.method === 'POST' && pathname.endsWith('/delete')))) {
+      const chatId = pathname.replace('/api/chats/', '').replace(/\/delete$/, '').trim();
+      if (currentRunningSession && currentRunningSession.id === chatId && isRunning) {
+        if (activeAgentLoop) activeAgentLoop.stop();
+        if (activeBrowserManager) await activeBrowserManager.close().catch(() => {});
+        isRunning = false;
+        isPaused = false;
+        broadcastSSE('status', { isRunning: false, isPaused: false, message: 'Execution halted upon deleting active chat.' });
+      }
+      const deleted = deleteChatSession(chatId);
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ ok: true, deleted, chatId }));
       return;
     }
 

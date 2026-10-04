@@ -90,6 +90,16 @@ export function listChatSessions(): Array<{
  * Initializes the default previous chat session for 085ed137-7f09-43b7-86cc-512290997a63
  * if it does not already exist.
  */
+export function deleteChatSession(id: string): boolean {
+  ensureChatsDir();
+  const sessionDir = path.join(CHATS_DIR, id);
+  if (fs.existsSync(sessionDir)) {
+    fs.rmSync(sessionDir, { recursive: true, force: true });
+    return true;
+  }
+  return false;
+}
+
 export function initializeDefaultChat(): void {
   const defaultId = '085ed137-7f09-43b7-86cc-512290997a63';
   if (!getChatSession(defaultId)) {
