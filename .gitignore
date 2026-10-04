@@ -29,7 +29,13 @@ coverage/
 .aider-desk/
 .agents/
 
+# Video Recording & Local Presentation Materials
+VIDEO_TRANSCRIPT.md
+*transcript*.md
+*video_script*.md
+
 # System Files
 .DS_Store
 Thumbs.db
 *.tmp
+

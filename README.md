@@ -419,6 +419,50 @@ npm run typecheck
 
 ---
 
+## ⚡ Frontier Intelligence: Why Adding a Paid API Key Makes the Assistant Much Smarter
+
+By default, BrowserAgent ships with free models (`DeepSeek V4 Flash:free`, `Qwen 3.8:free`, `Gemma 4:free`) so any evaluator can run and test the complete system out-of-the-box without spending a dime.
+
+However, plugging in a **paid API key** (such as **Claude 3.5 Sonnet / 3.7 Sonnet**, **GPT-4o**, or **Gemini 2.5 Pro**) elevates this assistant to a significantly higher tier of capability:
+
+1. **Long-Horizon Multi-Step Planning (25+ Steps Without Drifting):**
+   - Free models are susceptible to context degradation or goal loss after 5-8 steps on complex websites.
+   - Frontier models maintain a crisp, persistent chain-of-thought, easily carrying multi-step dependencies across dozens of pages, nested forms, and dynamic SPAs.
+2. **Deep Semantic Grounding & Ambiguity Resolution:**
+   - On messy, poorly labeled real-world websites where elements lack proper ARIA labels, frontier models possess superior zero-shot world knowledge to infer element purpose from surrounding layout, text proximity, and iconography.
+3. **Flawless Complex Form & Table Comprehension:**
+   - Enterprise tax portals, complex invoice reconciliations, and dynamic filtering tables require nuanced schema mapping. Paid models demonstrate near-zero hallucination on input field constraints and format validation.
+4. **Superior Self-Healing & Error Recovery:**
+   - When encountering roadblocks, unexpected popups, or network hiccups, paid models generate sophisticated recovery strategies (re-inspecting snapshots, backtracking, adjusting scroll offsets) rather than prematurely quitting.
+5. **No Rate Limits, No Throttling, Instant Speed:**
+   - Free-tier community models on OpenRouter occasionally suffer from high traffic queues, token throttling, or temporary 429 rate limits. A paid key grants dedicated high-throughput concurrency and sub-second reasoning speeds.
+
+*How to enable:* Simply click **Settings (`⚙️`)** in the dashboard and paste your OpenRouter or Gemini API key. It applies instantly.
+
+---
+
+## 🔮 Future Roadmap & What Can Be Improved
+
+While BrowserAgent is already a fully capable autonomous computer operator, several architectural and functional enhancements can take it even further:
+
+1. **Full Bi-directional Voice Mode (Real-Time Audio In/Out):**
+   - *Current state:* Live speech-to-text transcription via Web Speech API and faster-whisper (`small.en`).
+   - *Improvement:* Integrate a sub-150ms text-to-speech engine (e.g. Kokoro-82M or ElevenLabs streaming) so the agent narrates its actions in real time and can verbally ask for clarifications like a human copilot.
+2. **Native OS-Level Computer Vision Control (Desktop Screen Operations):**
+   - *Current state:* Launches and controls native desktop applications via protocol commands (`microsoft.windows.camera:`, `calc`, `notepad`, `explorer`) and file operations.
+   - *Improvement:* Integrate native OS accessibility buses (Windows UI Automation, macOS AXUIElement) combined with visual grounding models (e.g. OS-World / Computer Use API) to click and type into arbitrary third-party desktop software like Excel, Slack, or Photoshop.
+3. **Hierarchical Multi-Agent Swarms (Parallel Worker Sub-Agents):**
+   - *Current state:* Single sequential agent loop per chat session.
+   - *Improvement:* Allow a primary Orchestrator Agent to spawn parallel ephemeral worker agents (e.g. scraping 5 competitor flight websites simultaneously in separate background tabs and aggregating results into one unified table).
+4. **Self-Healing DOM Embedding Memory & Learned Skills:**
+   - *Current state:* Fresh snapshot inspection per turn.
+   - *Improvement:* Store vector embeddings of interactive elements. If a recurring site undergoes a minor UI redesign, the agent recognizes elements by semantic similarity without needing re-prompting.
+5. **Browser Extension Companion (Zero-Playwright Inline Control):**
+   - *Current state:* Automation via Playwright Chromium or CDP attachment.
+   - *Improvement:* Package the UI as a Chrome MV3 Extension that directly manipulates existing browser tabs without needing any external Node or Playwright process.
+
+---
+
 ## 📜 Tool Schema Reference
 
 | Tool Name | Parameters | Description |
