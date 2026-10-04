@@ -293,6 +293,17 @@ export function getDashboardHtml(): string {
           <span class="hidden sm:inline">Delete Chat</span>
         </button>
 
+        <!-- Dynamic Progress Bar Indicator (HulChul Human Control Rubric) -->
+        <div id="taskProgressBarContainer" class="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-light-card/80 dark:bg-gpt-card border border-light-border dark:border-gpt-border text-xs">
+          <div class="flex items-center gap-1.5 font-medium text-[11px] text-light-muted dark:text-gpt-muted">
+            <span id="progressBarLabel">Progress:</span>
+            <span id="progressBarPercent" class="font-mono font-bold text-emerald-500">0%</span>
+          </div>
+          <div class="w-16 md:w-24 h-1.5 rounded-full bg-slate-200 dark:bg-zinc-800 overflow-hidden relative">
+            <div id="progressBarFill" class="h-full bg-gradient-to-r from-emerald-500 to-teal-400 rounded-full transition-all duration-300 w-0"></div>
+          </div>
+        </div>
+
         <div class="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-light-card/80 dark:bg-gpt-card border border-light-border dark:border-gpt-border text-xs font-mono">
           <span class="flex items-center gap-1 text-light-muted dark:text-gpt-muted">
             <span class="text-emerald-500 font-bold">#</span>
@@ -1830,11 +1841,40 @@ export function getDashboardHtml(): string {
         .then(function(res) { return res.json(); })
         .then(function() {
           window.setRunningUI(false);
+          if (window.updateTaskProgress) {
+            window.updateTaskProgress(undefined, 'Stopped', 'bg-rose-500');
+          }
           window.showToast('🛑 Ongoing task stopped by user');
         })
         .catch(function(err) {
           window.showToast('Failed to stop task: ' + err.message);
         });
+    };
+
+    window.updateTaskProgress = function(percent, label, colorClass) {
+      var container = document.getElementById('taskProgressBarContainer');
+      var percentEl = document.getElementById('progressBarPercent');
+      var labelEl = document.getElementById('progressBarLabel');
+      var fillEl = document.getElementById('progressBarFill');
+
+      if (container && container.classList.contains('hidden')) {
+        container.classList.remove('hidden');
+      }
+
+      if (percent !== undefined && percentEl) {
+        percentEl.textContent = Math.round(percent) + '%';
+      }
+      if (label && labelEl) {
+        labelEl.textContent = label;
+      }
+      if (fillEl && percent !== undefined) {
+        fillEl.style.width = Math.max(0, Math.min(100, percent)) + '%';
+        if (colorClass) {
+          fillEl.className = 'h-full rounded-full transition-all duration-300 ' + colorClass;
+        } else {
+          fillEl.className = 'h-full bg-gradient-to-r from-emerald-500 to-teal-400 rounded-full transition-all duration-300';
+        }
+      }
     };
 
     window.loadRecentChats = function() {
@@ -1846,7 +1886,7 @@ export function getDashboardHtml(): string {
           if (!list) return;
           list.innerHTML = '';
           var curPath = window.location.pathname;
-          var curId = curPath.indexOf('/chat/agent/') !== -1 ? curPath.split('/chat/agent/')[1].split('/')[0] : (window.state.currentChatId || '');
+          var curId = curPath.indexOf('/chat/agent/') !== -1 ? curPath.split('/chat/agent/')[1].split('/')[0] : '';
 
           data.chats.forEach(function(chat) {
             var row = document.createElement('div');
@@ -2027,7 +2067,21 @@ export function getDashboardHtml(): string {
       window.state.currentChatId = null;
       window.state.stepCount = 0;
       window.state.isRunning = false;
+      window.state.lastRunResult = null;
+      window.state.isPaused = false;
       window.setRunningUI(false);
+
+      // 1. Immediately stop any active voice recognition and hide mic indicators
+      if (window.voiceState) {
+        window.stopVoiceListening(false, true);
+      }
+      var liveBar = document.getElementById('liveVoiceBar');
+      if (liveBar) liveBar.classList.add('hidden');
+
+      // 2. Reset progress bar to 0% Ready
+      if (window.updateTaskProgress) {
+        window.updateTaskProgress(0, 'Ready');
+      }
 
       var headerDeleteBtn = document.getElementById('headerDeleteChatBtn');
       if (headerDeleteBtn) headerDeleteBtn.classList.add('hidden');
@@ -2036,6 +2090,7 @@ export function getDashboardHtml(): string {
       if (input) {
         input.value = '';
         input.style.height = 'auto';
+        input.placeholder = 'Instruct the agent to search, navigate, or summarize...';
         input.focus();
       }
       var urlInput = document.getElementById('startUrlInput');
@@ -2366,10 +2421,20 @@ export function getDashboardHtml(): string {
       if (window.voiceState && (window.voiceState.isListening || window.voiceState.recognition || window.voiceState.mediaStream)) {
         window.stopVoiceListening(false, true);
       }
+      var liveBar = document.getElementById('liveVoiceBar');
+      if (liveBar) liveBar.classList.add('hidden');
+
       window.setRunningUI(true);
       window.state.stepCount = 0;
       window.state.startTime = Date.now();
+      window.state.lastRunResult = null;
       window.addToHistory(d.goal, d.initialUrl);
+
+      // Initialize dynamic progress bar (Criterion 5: Human Control)
+      if (window.updateTaskProgress) {
+        window.updateTaskProgress(15, 'Learning Strategy...', 'bg-gradient-to-r from-blue-500 to-cyan-400');
+      }
+
       var st = document.getElementById('metricSteps'); if (st) st.textContent = '0';
       var el = document.getElementById('metricElapsed'); if (el) el.textContent = '0.0s';
       if (d.initialUrl) {
@@ -2383,8 +2448,21 @@ export function getDashboardHtml(): string {
         if (me) me.textContent = sec + 's';
       }, 100);
 
+      // Reset result views
+      var tc = document.getElementById('resTextContent');
+      if (tc) tc.innerHTML = 'Executing task...';
+      var jv = document.getElementById('jsonViewer');
+      if (jv) jv.textContent = '{}';
+      var rb = document.getElementById('resBadge');
+      if (rb) {
+        rb.className = 'inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30';
+        rb.innerHTML = '⏳ Task in Progress';
+      }
+
+      // Clear dynamicChatSteps so previous chat bubbles NEVER linger!
       var container = document.getElementById('dynamicChatSteps');
       if (container) {
+        container.innerHTML = '';
         var userBubble = document.createElement('div');
         userBubble.className = "flex items-start gap-3.5 w-full animate-in fade-in";
         userBubble.innerHTML =
@@ -2406,6 +2484,12 @@ export function getDashboardHtml(): string {
       window.state.stepCount++;
       var st = document.getElementById('metricSteps');
       if (st) st.textContent = window.state.stepCount;
+
+      // Advance progress bar smoothly
+      if (window.updateTaskProgress) {
+        var estPct = Math.min(90, 15 + (window.state.stepCount * 18));
+        window.updateTaskProgress(estPct, 'Step #' + window.state.stepCount);
+      }
 
       var container = document.getElementById('dynamicChatSteps');
       if (container) {
@@ -2461,6 +2545,11 @@ export function getDashboardHtml(): string {
       window.setRunningUI(false);
       window.state.lastRunResult = d;
 
+      // Set progress bar to 100% completed
+      if (window.updateTaskProgress) {
+        window.updateTaskProgress(100, 'Completed', 'bg-emerald-500');
+      }
+
       var img = document.getElementById('realLiveFrame');
       var placeholder = document.getElementById('browserPlaceholder');
       if (img && placeholder) {
@@ -2491,7 +2580,7 @@ export function getDashboardHtml(): string {
           '<div class="flex-1 space-y-2 min-w-0">' +
             '<div class="text-xs font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">Final Result</div>' +
             '<div class="text-sm p-4 rounded-2xl bg-light-card dark:bg-gpt-card border border-light-border dark:border-gpt-border text-light-text dark:text-gpt-text leading-relaxed whitespace-pre-wrap shadow-sm">' + window.formatResultText(d.finalAnswer || d.summary || 'Completed.') + '</div>' +
-          '</div>';
+            '</div>';
         container.appendChild(doneBubble);
         var chatFeed = document.getElementById('chatFeed');
         if (chatFeed) chatFeed.scrollTop = chatFeed.scrollHeight;
@@ -2503,6 +2592,9 @@ export function getDashboardHtml(): string {
 
     window.onRunError = function(msg) {
       window.setRunningUI(false);
+      if (window.updateTaskProgress) {
+        window.updateTaskProgress(undefined, 'Error', 'bg-rose-500');
+      }
       var ur = document.getElementById('browserUrlDisplay');
       if (ur) ur.textContent = 'Session Terminated (Error)';
 
@@ -2601,6 +2693,15 @@ export function getDashboardHtml(): string {
       try { window.loadModels(); } catch (e) {}
       try { window.initSSE(); } catch (e) {}
       try { window.loadRecentChats(); } catch (e) {}
+
+      // Ensure voice listening indicators and microphone state are completely clean on load
+      try {
+        if (window.voiceState) window.stopVoiceListening(false, true);
+        var liveBar = document.getElementById('liveVoiceBar');
+        if (liveBar) liveBar.classList.add('hidden');
+        var promptInput = document.getElementById('taskPromptInput');
+        if (promptInput) promptInput.placeholder = 'Instruct the agent to search, navigate, or summarize...';
+      } catch (e) {}
 
       var path = window.location.pathname;
       if (path.indexOf('/chat/agent/') !== -1) {
